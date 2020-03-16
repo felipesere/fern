@@ -25,7 +25,7 @@ impl<'de> Deserialize<'de> for Steps {
             type Value = Steps;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("either \"auto\" or a port number")
+                formatter.write_str("either single string or sequence of strings")
             }
 
             fn visit_str<E>(self, value: &str) -> Result<Self::Value, E> {
@@ -71,14 +71,14 @@ use std::process::Command;
 
 fn run(steps: Steps, cwd: &Path) {
     for value in steps.values {
-        let output = Command::new("sh")
+        Command::new("sh")
             .arg("-c")
             .arg(value.clone())
             .current_dir(cwd)
-            .output()
-            .expect("unable to run command");
-
-        println!("{}", String::from_utf8_lossy(&output.stdout[..]));
+            .spawn()
+            .expect("unable to run command")
+            .wait()
+            .expect("child process was not successful");
     }
 }
 
