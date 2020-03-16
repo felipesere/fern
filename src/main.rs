@@ -5,7 +5,7 @@ use std::fs::File;
 
 #[derive(Debug, Eq, PartialEq)]
 struct Steps {
-    values: Vec<String>,
+    pub values: Vec<String>,
 }
 
 impl<'de> Deserialize<'de> for Steps {
@@ -54,9 +54,37 @@ struct FolderConfig {
     check: Steps,
 }
 
-fn main() {
-    let file = File::open("./fern.yaml").unwrap();
+use clap::{App, SubCommand};
+use std::process::Command;
 
+fn run(steps: Steps) {
+    for value in steps.values {
+        let output = Command::new("sh")
+            .arg("-c")
+            .arg(value.clone())
+            .output()
+            .expect("unable to run command");
+
+        println!("{}", String::from_utf8_lossy(&output.stdout[..]));
+    }
+}
+
+fn main() {
+    let matches = App::new("fern")
+        .subcommand(SubCommand::with_name("fmt").about("running any formatting"))
+        .subcommand(SubCommand::with_name("build").about("running any building"))
+        .subcommand(SubCommand::with_name("test").about("running any testing"))
+        .subcommand(SubCommand::with_name("check").about("running any checking"))
+        .get_matches();
+
+    let file = File::open("./fern.yaml").unwrap();
     let config: FolderConfig = serde_yaml::from_reader(file).unwrap();
-    println!("{:#?}", config);
+
+    match matches.subcommand_name() {
+        Some("fmt") => run(config.fmt),
+        Some("build") => run(config.build),
+        Some("test") => run(config.test),
+        Some("check") => run(config.check),
+        _ => println!("subcommand did not match"),
+    };
 }
