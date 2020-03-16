@@ -82,7 +82,7 @@ fn run(steps: Steps, cwd: &Path) {
     }
 }
 
-fn find_all_leafs() -> Vec<PathBuf> {
+fn find_all_leaves() -> Vec<PathBuf> {
     let mut fern_leaves = Vec::new();
     for result in WalkBuilder::new("./").build() {
         let entry = result.unwrap();
@@ -106,11 +106,20 @@ fn main() {
         .subcommand(SubCommand::with_name("build").about("running any building"))
         .subcommand(SubCommand::with_name("test").about("running any testing"))
         .subcommand(SubCommand::with_name("check").about("running any checking"))
+        .subcommand(SubCommand::with_name("leaves").about("list all leaves fern will consider"))
         .get_matches();
 
-    let fern_leafs = find_all_leafs();
+    let fern_leaves = find_all_leaves();
 
-    for leaf in fern_leafs {
+    if matches.is_present("leaves") {
+        println!("Considering leaves:");
+        for leaf in fern_leaves {
+            println!(" *\t{}", leaf.to_string_lossy())
+        }
+        return;
+    }
+
+    for leaf in fern_leaves {
         let file = File::open(leaf.clone()).unwrap();
         let working_dir = leaf.parent().unwrap();
         let config: FolderConfig = serde_yaml::from_reader(file).unwrap();
