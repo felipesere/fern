@@ -1,0 +1,7 @@
+fmt: echo 'running fmt'
+build: echo 'running build'
+test:
+  - echo 'running tests'
+  - echo 'running integration tests'
+check:
+  - echo 'running check'
