@@ -66,7 +66,7 @@ struct FolderConfig {
 
 use clap::{App, SubCommand};
 use ignore::WalkBuilder;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn run(steps: Steps, cwd: &Path) {
@@ -82,14 +82,7 @@ fn run(steps: Steps, cwd: &Path) {
     }
 }
 
-fn main() {
-    let matches = App::new("fern")
-        .subcommand(SubCommand::with_name("fmt").about("running any formatting"))
-        .subcommand(SubCommand::with_name("build").about("running any building"))
-        .subcommand(SubCommand::with_name("test").about("running any testing"))
-        .subcommand(SubCommand::with_name("check").about("running any checking"))
-        .get_matches();
-
+fn find_all_leafs() -> Vec<PathBuf> {
     let mut fern_leaves = Vec::new();
     for result in WalkBuilder::new("./").build() {
         let entry = result.unwrap();
@@ -103,19 +96,33 @@ fn main() {
 
         fern_leaves.push(entry.into_path());
     }
-    // fern_leaves.sort_by(|a, b| a.partial_cmp(b).unwrap().reverse());  // come up with something clever here
 
-    for leave in fern_leaves {
-        let file = File::open(leave.clone()).unwrap();
-        let working_dir = leave.parent().unwrap();
+    fern_leaves
+}
+
+fn main() {
+    let matches = App::new("fern")
+        .subcommand(SubCommand::with_name("fmt").about("running any formatting"))
+        .subcommand(SubCommand::with_name("build").about("running any building"))
+        .subcommand(SubCommand::with_name("test").about("running any testing"))
+        .subcommand(SubCommand::with_name("check").about("running any checking"))
+        .get_matches();
+
+    let fern_leafs = find_all_leafs();
+
+    for leaf in fern_leafs {
+        let file = File::open(leaf.clone()).unwrap();
+        let working_dir = leaf.parent().unwrap();
         let config: FolderConfig = serde_yaml::from_reader(file).unwrap();
 
-        match matches.subcommand_name() {
-            Some("fmt") => run(config.fmt, working_dir),
-            Some("build") => run(config.build, working_dir),
-            Some("test") => run(config.test, working_dir),
-            Some("check") => run(config.check, working_dir),
-            _ => println!("subcommand did not match"),
+        let steps = match matches.subcommand_name() {
+            Some("fmt") => config.fmt,
+            Some("build") => config.build,
+            Some("test") => config.test,
+            Some("check") => config.check,
+            _ => Steps::default(),
         };
+
+        run(steps, working_dir);
     }
 }
