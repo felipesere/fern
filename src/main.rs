@@ -55,6 +55,7 @@ struct FolderConfig {
 }
 
 use clap::{App, SubCommand};
+use ignore::WalkBuilder;
 use std::process::Command;
 
 fn run(steps: Steps) {
@@ -76,6 +77,22 @@ fn main() {
         .subcommand(SubCommand::with_name("test").about("running any testing"))
         .subcommand(SubCommand::with_name("check").about("running any checking"))
         .get_matches();
+
+    let mut fern_leaves = Vec::new();
+    for result in WalkBuilder::new("./").build() {
+        let entry = result.unwrap();
+        if entry.metadata().unwrap().is_dir() {
+            continue;
+        }
+
+        if entry.path().file_name().unwrap() != "fern.yaml" {
+            continue;
+        }
+
+        fern_leaves.push(entry.into_path());
+    }
+    // fern_leaves.sort_by(|a, b| a.partial_cmp(b).unwrap().reverse());  // come up with something clever here
+    println!("{:#?}", fern_leaves);
 
     let file = File::open("./fern.yaml").unwrap();
     let config: FolderConfig = serde_yaml::from_reader(file).unwrap();
