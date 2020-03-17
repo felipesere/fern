@@ -1,8 +1,10 @@
 # Fern
 
-`fern` is not a build tool.
-Its closer to a command runner.
-The one and only trick up its sleeve is that, like a real life fern, its fractal/recursive.
+`fern` is not a build tool
+It's closer to a command runner. Or maybe a `meta-runner` to give your different parts of a mono-repo a unified interface.
+Have a look at this blog by Jeff Ramnani [Project Build Tool](https://8thlight.com/blog/jeff-ramnani/2017/08/07/project-build-protocol.html) for the core idea.
+
+The one and only trick up its sleeve is that, like a real life fern, it is fractal/recursive.
 
 ## Context - Files where they make sense
 
@@ -12,7 +14,8 @@ Maybe your backend is written in Rust, while the mail service is a Python app, a
 
 Now, you could write a `Makefile` that orchestrates across all the apps,
 launching `cargo`,`pip`, and `elm` in just the right folders.
-The thing I found annoyoing, is that one `Makefile` rules them all.
+The thing I found annoying, is that one `Makefile` rules them all.
+That `Makefile` mixes and matches concerns across many languages and build tools _and_ it needs to get clever with folders doing things like `cd ui && npm install`.
 
 `fern` is a little different - and orders of magnitude _less_ powerful than make - but also simpler.
 `fern` can find `fern.yaml` files spread throughout your code base.
@@ -55,10 +58,10 @@ There is no way to describe interdependencies (yet) or anything fancier than tha
 
 The commands match exactly what you'd write in the fern file:
 
-* `fmt` for anything formatting related
-* `build` for anything related to building the app
-* `test` for running any kind of tests
-* `check` for things like type-checks or build-checks
+* `fern fmt` for anything formatting related
+* `fern build` for anything related to building the app
+* `fern test` for running any kind of tests
+* `fern check` for things like type-checks or build-checks
 
 With the addition of one command:
 
@@ -75,4 +78,4 @@ At the moment, the best way to use is to clone the source and compile it with th
 
 Contributions are super welcome:
 * There are no tests, so feel free to write any
-* Are there any lightweight features you think would benefeit`fern`? Open an issue or PR
+* Are there any lightweight features you think would benefit`fern`? Open an issue or PR
