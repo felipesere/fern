@@ -64,23 +64,10 @@ struct FolderConfig {
     check: Steps,
 }
 
-use clap::{App, Arg, ArgMatches, SubCommand};
+use clap::{App, Arg, SubCommand};
 use ignore::WalkBuilder;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-
-fn run(steps: Steps, cwd: &Path) {
-    for value in steps.values {
-        Command::new("sh")
-            .arg("-c")
-            .arg(value.clone())
-            .current_dir(cwd)
-            .spawn()
-            .expect("unable to run command")
-            .wait()
-            .expect("child process was not successful");
-    }
-}
 
 fn find_all_leaves() -> Vec<PathBuf> {
     let mut fern_leaves = Vec::new();
@@ -101,40 +88,37 @@ fn find_all_leaves() -> Vec<PathBuf> {
 }
 
 fn main() {
+    let mut app = App::new("fern");
+    let commands = vec![
+        ("fmt", "running any formatting"),
+        ("build", "running any building"),
+        ("test", "running any testing"),
+        ("check", "doing any checks"),
+    ];
+
     let here = SubCommand::with_name("here")
         .about("Only look at the current directory for fern.yaml files.");
-    let matches = App::new("fern")
-        .subcommand(
-            SubCommand::with_name("fmt")
-                .about("running any formatting")
+
+    for (command, about) in commands {
+        app = app.subcommand(
+            SubCommand::with_name(command)
+                .about(about)
                 .subcommand(here.clone()),
-        )
-        .subcommand(
-            SubCommand::with_name("build")
-                .about("running any building")
-                .subcommand(here.clone()),
-        )
-        .subcommand(
-            SubCommand::with_name("test")
-                .about("running any testing")
-                .subcommand(here.clone()),
-        )
-        .subcommand(
-            SubCommand::with_name("check")
-                .about("running any checking")
-                .subcommand(here.clone()),
-        )
-        .subcommand(
-            SubCommand::with_name("leaves")
-                .about("list all leaves fern will consider")
-                .arg(
-                    Arg::with_name("porcelain")
-                        .short("p")
-                        .long("porcelain")
-                        .required(false),
-                ),
-        )
-        .get_matches();
+        );
+    }
+
+    app = app.subcommand(
+        SubCommand::with_name("leaves")
+            .about("list all leaves fern will consider")
+            .arg(
+                Arg::with_name("porcelain")
+                    .short("p")
+                    .long("porcelain")
+                    .required(false),
+            ),
+    );
+
+    let matches = app.get_matches();
 
     match matches.subcommand() {
         ("leaves", Some(arg_matches)) => {
@@ -165,37 +149,40 @@ fn main() {
 }
 
 fn run_leaves(command: &str, here: bool) {
-    if !here {
-        let leaves = find_all_leaves();
-        for leaf in leaves {
-            let file = File::open(leaf.clone()).unwrap();
-            let working_dir = leaf.parent().unwrap();
-            let config: FolderConfig = serde_yaml::from_reader(file).unwrap();
-
-            let steps = match command {
-                "fmt" => config.fmt,
-                "build" => config.build,
-                "test" => config.test,
-                "check" => config.check,
-                _ => Steps::default(),
-            };
-
-            run(steps, working_dir);
-        }
+    if here {
+        run_single_leaf(PathBuf::from("./fern.yaml"), command)
     } else {
-        let leaf = PathBuf::from("./fern.yaml");
-        let file = File::open(leaf.clone()).unwrap();
-        let working_dir = leaf.parent().unwrap();
-        let config: FolderConfig = serde_yaml::from_reader(file).unwrap();
+        for leaf in find_all_leaves() {
+            run_single_leaf(leaf, command)
+        }
+    }
+}
 
-        let steps = match command {
-            "fmt" => config.fmt,
-            "build" => config.build,
-            "test" => config.test,
-            "check" => config.check,
-            _ => Steps::default(),
-        };
+fn run_single_leaf(leaf: PathBuf, command: &str) {
+    let file = File::open(leaf.clone()).unwrap();
+    let working_dir = leaf.parent().unwrap();
+    let config: FolderConfig = serde_yaml::from_reader(file).unwrap();
 
-        run(steps, working_dir);
+    let steps = match command {
+        "fmt" => config.fmt,
+        "build" => config.build,
+        "test" => config.test,
+        "check" => config.check,
+        _ => Steps::default(),
+    };
+
+    run_all_steps(steps, working_dir);
+}
+
+fn run_all_steps(steps: Steps, cwd: &Path) {
+    for value in steps.values {
+        Command::new("sh")
+            .arg("-c")
+            .arg(value.clone())
+            .current_dir(cwd)
+            .spawn()
+            .expect("unable to run command")
+            .wait()
+            .expect("child process was not successful");
     }
 }
