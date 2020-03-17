@@ -64,7 +64,7 @@ struct FolderConfig {
     check: Steps,
 }
 
-use clap::{App, Arg, SubCommand};
+use clap::{App, Arg, ArgMatches, SubCommand};
 use ignore::WalkBuilder;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -121,31 +121,13 @@ fn main() {
     let matches = app.get_matches();
 
     match matches.subcommand() {
-        ("leaves", Some(arg_matches)) => {
-            let fern_leaves = find_all_leaves();
-            if arg_matches.is_present("porcelain") {
-                println!(
-                    "{}",
-                    fern_leaves
-                        .iter()
-                        .map(|s| s.to_string_lossy().to_owned())
-                        .collect::<Vec<_>>()
-                        .join(" ")
-                );
-            } else {
-                println!("Considering leaves:");
-                for leaf in fern_leaves {
-                    println!(" *\t{}", leaf.to_string_lossy())
-                }
-            }
-        }
-        (command, extra_args) => run_leaves(
-            command,
-            extra_args
-                .map(|args| args.is_present("here"))
-                .unwrap_or(false),
-        ),
+        ("leaves", extra_args) => print_leaves(is_present(extra_args, "porcelain")),
+        (command, extra_args) => run_leaves(command, is_present(extra_args, "here")),
     }
+}
+
+fn is_present(extra: Option<&ArgMatches>, name: &'static str) -> bool {
+    extra.map(|args| args.is_present(name)).unwrap_or(false)
 }
 
 fn run_leaves(command: &str, here: bool) {
@@ -184,5 +166,24 @@ fn run_all_steps(steps: Steps, cwd: &Path) {
             .expect("unable to run command")
             .wait()
             .expect("child process was not successful");
+    }
+}
+
+fn print_leaves(porcelain: bool) {
+    let fern_leaves = find_all_leaves();
+    if porcelain {
+        println!(
+            "{}",
+            fern_leaves
+                .iter()
+                .map(|s| s.to_string_lossy().to_owned())
+                .collect::<Vec<_>>()
+                .join(" ")
+        );
+    } else {
+        println!("Considering leaves:");
+        for leaf in fern_leaves {
+            println!(" *\t{}", leaf.to_string_lossy())
+        }
     }
 }
