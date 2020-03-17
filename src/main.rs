@@ -64,7 +64,7 @@ struct FolderConfig {
     check: Steps,
 }
 
-use clap::{App, SubCommand};
+use clap::{App, Arg, SubCommand};
 use ignore::WalkBuilder;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -106,29 +106,53 @@ fn main() {
         .subcommand(SubCommand::with_name("build").about("running any building"))
         .subcommand(SubCommand::with_name("test").about("running any testing"))
         .subcommand(SubCommand::with_name("check").about("running any checking"))
-        .subcommand(SubCommand::with_name("leaves").about("list all leaves fern will consider"))
+        .subcommand(
+            SubCommand::with_name("leaves")
+                .about("list all leaves fern will consider")
+                .arg(
+                    Arg::with_name("porcelain")
+                        .short("p")
+                        .long("porcelain")
+                        .required(false),
+                ),
+        )
         .get_matches();
 
     let fern_leaves = find_all_leaves();
 
-    if matches.is_present("leaves") {
-        println!("Considering leaves:");
-        for leaf in fern_leaves {
-            println!(" *\t{}", leaf.to_string_lossy())
+    match matches.subcommand() {
+        ("leaves", Some(arg_matches)) => {
+            if arg_matches.is_present("porcelain") {
+                println!(
+                    "{}",
+                    fern_leaves
+                        .iter()
+                        .map(|s| s.to_string_lossy().to_owned())
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                );
+            } else {
+                println!("Considering leaves:");
+                for leaf in fern_leaves {
+                    println!(" *\t{}", leaf.to_string_lossy())
+                }
+            }
         }
-        return;
+        (command, _) => run_leaves(command, fern_leaves),
     }
+}
 
-    for leaf in fern_leaves {
+fn run_leaves(command: &str, leaves: Vec<PathBuf>) {
+    for leaf in leaves {
         let file = File::open(leaf.clone()).unwrap();
         let working_dir = leaf.parent().unwrap();
         let config: FolderConfig = serde_yaml::from_reader(file).unwrap();
 
-        let steps = match matches.subcommand_name() {
-            Some("fmt") => config.fmt,
-            Some("build") => config.build,
-            Some("test") => config.test,
-            Some("check") => config.check,
+        let steps = match command {
+            "fmt" => config.fmt,
+            "build" => config.build,
+            "test" => config.test,
+            "check" => config.check,
             _ => Steps::default(),
         };
 
