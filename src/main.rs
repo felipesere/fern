@@ -64,7 +64,7 @@ struct FolderConfig {
     check: Steps,
 }
 
-use clap::{App, Arg, SubCommand};
+use clap::{App, Arg, ArgMatches, SubCommand};
 use ignore::WalkBuilder;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -101,11 +101,29 @@ fn find_all_leaves() -> Vec<PathBuf> {
 }
 
 fn main() {
+    let here = SubCommand::with_name("here")
+        .about("Only look at the current directory for fern.yaml files.");
     let matches = App::new("fern")
-        .subcommand(SubCommand::with_name("fmt").about("running any formatting"))
-        .subcommand(SubCommand::with_name("build").about("running any building"))
-        .subcommand(SubCommand::with_name("test").about("running any testing"))
-        .subcommand(SubCommand::with_name("check").about("running any checking"))
+        .subcommand(
+            SubCommand::with_name("fmt")
+                .about("running any formatting")
+                .subcommand(here.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("build")
+                .about("running any building")
+                .subcommand(here.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("test")
+                .about("running any testing")
+                .subcommand(here.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("check")
+                .about("running any checking")
+                .subcommand(here.clone()),
+        )
         .subcommand(
             SubCommand::with_name("leaves")
                 .about("list all leaves fern will consider")
@@ -118,10 +136,9 @@ fn main() {
         )
         .get_matches();
 
-    let fern_leaves = find_all_leaves();
-
     match matches.subcommand() {
         ("leaves", Some(arg_matches)) => {
+            let fern_leaves = find_all_leaves();
             if arg_matches.is_present("porcelain") {
                 println!(
                     "{}",
@@ -138,12 +155,35 @@ fn main() {
                 }
             }
         }
-        (command, _) => run_leaves(command, fern_leaves),
+        (command, extra_args) => run_leaves(
+            command,
+            extra_args
+                .map(|args| args.is_present("here"))
+                .unwrap_or(false),
+        ),
     }
 }
 
-fn run_leaves(command: &str, leaves: Vec<PathBuf>) {
-    for leaf in leaves {
+fn run_leaves(command: &str, here: bool) {
+    if !here {
+        let leaves = find_all_leaves();
+        for leaf in leaves {
+            let file = File::open(leaf.clone()).unwrap();
+            let working_dir = leaf.parent().unwrap();
+            let config: FolderConfig = serde_yaml::from_reader(file).unwrap();
+
+            let steps = match command {
+                "fmt" => config.fmt,
+                "build" => config.build,
+                "test" => config.test,
+                "check" => config.check,
+                _ => Steps::default(),
+            };
+
+            run(steps, working_dir);
+        }
+    } else {
+        let leaf = PathBuf::from("./fern.yaml");
         let file = File::open(leaf.clone()).unwrap();
         let working_dir = leaf.parent().unwrap();
         let config: FolderConfig = serde_yaml::from_reader(file).unwrap();
