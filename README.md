@@ -1,3 +1,6 @@
+![](https://github.com/felipesere/fern/workflows/build/badge.svg)
+
+
 # Fern
 
 `fern` is not a build tool
