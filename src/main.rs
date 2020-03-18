@@ -27,12 +27,6 @@ enum Error {
         source: std::io::Error,
     },
 
-    #[snafu(display("Failed to execute command '{}': {}", command, source))]
-    FailedToExecuteCommand {
-        command: String,
-        source: std::io::Error,
-    },
-
     #[snafu(display("Failed to execute command '{}': exit code {}", command, exit_code))]
     CommandDidNotSucceed { command: String, exit_code: i32 },
 }
@@ -51,34 +45,25 @@ enum PrintStyle {
 }
 
 enum Commands {
-    Fmt(Depth),
-    Build(Depth),
-    Test(Depth),
-    Check(Depth),
+    Fmt,
+    Build,
+    Test,
+    Check,
 }
 
 impl Commands {
     fn pick(&self, folder: FolderConfig) -> Steps {
         match self {
-            Commands::Fmt(_) => folder.fmt,
-            Commands::Build(_) => folder.build,
-            Commands::Test(_) => folder.test,
-            Commands::Check(_) => folder.check,
-        }
-    }
-
-    fn is_recursive(&self) -> bool {
-        match self {
-            Commands::Fmt(depth)
-            | Commands::Build(depth)
-            | Commands::Test(depth)
-            | Commands::Check(depth) => *depth == Depth::Recursive,
+            Commands::Fmt => folder.fmt,
+            Commands::Build => folder.build,
+            Commands::Test => folder.test,
+            Commands::Check => folder.check,
         }
     }
 }
 
 enum Options {
-    Exec(Commands),
+    Exec(Commands, Depth),
     Leaves(PrintStyle),
     Help,
     Version,
@@ -122,19 +107,19 @@ fn command() -> Options {
     }
 
     if args.contains("fmt") {
-        return Options::Exec(Commands::Fmt(depth));
+        return Options::Exec(Commands::Fmt, depth);
     }
 
     if args.contains("build") {
-        return Options::Exec(Commands::Build(depth));
+        return Options::Exec(Commands::Build, depth);
     }
 
     if args.contains("check") {
-        return Options::Exec(Commands::Check(depth));
+        return Options::Exec(Commands::Check, depth);
     }
 
     if args.contains("test") {
-        return Options::Exec(Commands::Test(depth));
+        return Options::Exec(Commands::Test, depth);
     }
 
     if args.contains("leaves") {
@@ -162,7 +147,7 @@ fn main() {
         Options::Version => print_version(version),
         Options::Leaves(style) => print_leaves(style),
         Options::Help => print_help(),
-        Options::Exec(c) => run_leaves(c),
+        Options::Exec(command, depth) => run_leaves(command, depth),
     };
 
     if let Result::Err(e) = res {
@@ -180,8 +165,8 @@ fn print_help() -> Result<()> {
     Result::Ok(())
 }
 
-fn run_leaves(command: Commands) -> Result<()> {
-    if command.is_recursive() {
+fn run_leaves(command: Commands, depth: Depth) -> Result<()> {
+    if depth == Depth::Recursive {
         for leaf in find_all_leaves() {
             run_single_leaf(leaf, &command)?
         }
@@ -214,12 +199,8 @@ fn run_all_steps(steps: Steps, cwd: &Path) -> Result<()> {
             .arg("-c")
             .arg(value.clone())
             .current_dir(cwd)
-            .spawn()
+            .status()
             .context(DidNotFindCommand {
-                command: value.clone(),
-            })?
-            .wait()
-            .context(FailedToExecuteCommand {
                 command: value.clone(),
             })?;
         if !ecode.success() {
