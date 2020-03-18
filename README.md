@@ -1,7 +1,7 @@
 # Fern
 
 `fern` is not a build tool
-It's closer to a command runner. Or maybe a `meta-runner` to give your different parts of a mono-repo a unified interface.
+It's closer to a command runner. Its gives different parts of your mono-repo a unified interface to run certain tasks.
 Have a look at this blog by Jeff Ramnani [Project Build Tool](https://8thlight.com/blog/jeff-ramnani/2017/08/07/project-build-protocol.html) for the core idea.
 
 The one and only trick up its sleeve is that, like a real life fern, it is fractal/recursive.
