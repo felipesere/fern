@@ -101,10 +101,11 @@ fn find_all_leaves() -> Vec<PathBuf> {
 
 fn command() -> Options {
     let mut args = pico_args::Arguments::from_env();
-    let mut depth = Depth::Recursive;
-    if args.contains("here") {
-        depth = Depth::Here;
-    }
+    let depth = if args.contains("here") {
+        Depth::Here
+    } else {
+        Depth::Recursive
+    };
 
     if args.contains("fmt") {
         return Options::Exec(Commands::Fmt, depth);
@@ -138,7 +139,7 @@ fn command() -> Options {
 }
 
 const GIT_VERSION: &str = git_version!();
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn main() {
     let version = format!("{} ({})", VERSION, GIT_VERSION);
@@ -170,7 +171,7 @@ fn run_leaves(command: Commands, depth: Depth) -> Result<()> {
         for leaf in find_all_leaves() {
             run_single_leaf(leaf, &command)?
         }
-        return Ok(());
+        Ok(())
     } else {
         run_single_leaf(PathBuf::from("./fern.yaml"), &command)
     }
@@ -205,7 +206,7 @@ fn run_all_steps(steps: Steps, cwd: &Path) -> Result<()> {
             })?;
         if !ecode.success() {
             return Result::Err(Error::CommandDidNotSucceed {
-                command: value.clone(),
+                command: value,
                 exit_code: ecode.code().unwrap_or(-1),
             });
         }
@@ -221,7 +222,7 @@ fn print_leaves(style: PrintStyle) -> Result<()> {
             "{}",
             fern_leaves
                 .iter()
-                .map(|s| s.to_string_lossy().to_owned())
+                .map(|s| s.to_string_lossy())
                 .collect::<Vec<_>>()
                 .join(" ")
         ),
