@@ -11,6 +11,7 @@ ignore = "0.4.12"
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.8.11"
 clap = "2.33.0"
+git-version = "0.3.4"
 
 [profile.release]
 lto = true

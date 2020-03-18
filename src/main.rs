@@ -3,6 +3,10 @@ use serde::de::Visitor;
 use serde::{Deserialize, Deserializer};
 use std::fs::File;
 
+use git_version::git_version;
+const GIT_VERSION: &str = git_version!();
+const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+
 #[derive(Debug, Eq, PartialEq)]
 struct Steps {
     pub values: Vec<String>,
@@ -88,7 +92,8 @@ fn find_all_leaves() -> Vec<PathBuf> {
 }
 
 fn main() {
-    let mut app = App::new("fern");
+    let version = format!("{} ({})", VERSION, GIT_VERSION);
+    let mut app = App::new("fern").version(&*version);
     let commands = vec![
         ("fmt", "running any formatting"),
         ("build", "running any building"),
