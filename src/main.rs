@@ -56,6 +56,7 @@ impl<'de> Deserialize<'de> for Steps {
     }
 }
 
+#[derive(Eq, PartialEq)]
 enum Depth {
     Here,
     Recursive,
@@ -71,6 +72,26 @@ enum Commands {
     Build(Depth),
     Test(Depth),
     Check(Depth),
+}
+
+impl Commands {
+    fn pick(&self, folder: FolderConfig) -> Steps {
+        match self {
+            Commands::Fmt(_) => folder.fmt,
+            Commands::Build(_) => folder.build,
+            Commands::Test(_) => folder.test,
+            Commands::Check(_) => folder.check,
+        }
+    }
+
+    fn is_recursive(&self) -> bool {
+        match self {
+            Commands::Fmt(depth)
+            | Commands::Build(depth)
+            | Commands::Test(depth)
+            | Commands::Check(depth) => *depth == Depth::Recursive,
+        }
+    }
 }
 
 enum Options {
@@ -155,47 +176,30 @@ fn command() -> Options {
 fn main() {
     let version = format!("{} ({})", VERSION, GIT_VERSION);
 
-    let c = command();
-
-    match c {
+    match command() {
         Options::Version => println!("fern version {}", version),
         Options::Leaves(style) => print_leaves(style),
-        Options::Help => println!("helo"),
+        Options::Help => println!("help"),
         Options::Exec(c) => run_leaves(c),
     }
 }
 
 fn run_leaves(command: Commands) {
-    match command {
-        Commands::Build(Depth::Here) => run_single_leaf(PathBuf::from("./fern.yaml"), "build"),
-        Commands::Fmt(Depth::Here) => run_single_leaf(PathBuf::from("./fern.yaml"), "fmt"),
-        Commands::Test(Depth::Here) => run_single_leaf(PathBuf::from("./fern.yaml"), "test"),
-        Commands::Check(Depth::Here) => run_single_leaf(PathBuf::from("./fern.yaml"), "check"),
-        Commands::Build(Depth::Recursive) => run_all_leaves("build"),
-        Commands::Fmt(Depth::Recursive) => run_all_leaves("fmt"),
-        Commands::Test(Depth::Recursive) => run_all_leaves("test"),
-        Commands::Check(Depth::Recursive) => run_all_leaves("check"),
+    if command.is_recursive() {
+        for leaf in find_all_leaves() {
+            run_single_leaf(leaf, &command)
+        }
+    } else {
+        run_single_leaf(PathBuf::from("./fern.yaml"), &command)
     }
 }
 
-fn run_all_leaves(command: &'static str) {
-    for leaf in find_all_leaves() {
-        run_single_leaf(leaf, command)
-    }
-}
-
-fn run_single_leaf(leaf: PathBuf, command: &str) {
+fn run_single_leaf(leaf: PathBuf, command: &Commands) {
     let file = File::open(leaf.clone()).unwrap();
     let working_dir = leaf.parent().unwrap();
     let config: FolderConfig = serde_yaml::from_reader(file).unwrap();
 
-    let steps = match command {
-        "fmt" => config.fmt,
-        "build" => config.build,
-        "test" => config.test,
-        "check" => config.check,
-        _ => Steps::default(),
-    };
+    let steps = command.pick(config);
 
     run_all_steps(steps, working_dir);
 }
