@@ -56,6 +56,30 @@ impl<'de> Deserialize<'de> for Steps {
     }
 }
 
+enum Depth {
+    Here,
+    Recursive,
+}
+
+enum PrintStyle {
+    Pretty,
+    Porcelain,
+}
+
+enum Commands {
+    Fmt(Depth),
+    Build(Depth),
+    Test(Depth),
+    Check(Depth),
+}
+
+enum Options {
+    Exec(Commands),
+    Leaves(PrintStyle),
+    Help,
+    Version,
+}
+
 #[derive(Debug, PartialEq, Deserialize)]
 struct FolderConfig {
     #[serde(default)]
@@ -68,7 +92,6 @@ struct FolderConfig {
     check: Steps,
 }
 
-use clap::{App, Arg, ArgMatches, SubCommand};
 use ignore::WalkBuilder;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -91,57 +114,73 @@ fn find_all_leaves() -> Vec<PathBuf> {
     fern_leaves
 }
 
+fn command() -> Options {
+    let mut args = pico_args::Arguments::from_env();
+    let mut depth = Depth::Recursive;
+    if args.contains("here") {
+        depth = Depth::Here;
+    }
+
+    if args.contains("fmt") {
+        return Options::Exec(Commands::Fmt(depth));
+    }
+
+    if args.contains("build") {
+        return Options::Exec(Commands::Build(depth));
+    }
+
+    if args.contains("check") {
+        return Options::Exec(Commands::Check(depth));
+    }
+
+    if args.contains("test") {
+        return Options::Exec(Commands::Test(depth));
+    }
+
+    if args.contains("leaves") {
+        if args.contains(["-p", "--porcelain"]) {
+            return Options::Leaves(PrintStyle::Porcelain);
+        } else {
+            return Options::Leaves(PrintStyle::Pretty);
+        }
+    }
+
+    if args.contains(["-v", "--version"]) {
+        return Options::Version;
+    }
+
+    Options::Help
+}
+
 fn main() {
     let version = format!("{} ({})", VERSION, GIT_VERSION);
-    let mut app = App::new("fern").version(&*version);
-    let commands = vec![
-        ("fmt", "running any formatting"),
-        ("build", "running any building"),
-        ("test", "running any testing"),
-        ("check", "doing any checks"),
-    ];
 
-    let here = SubCommand::with_name("here")
-        .about("Only look at the current directory for fern.yaml files.");
+    let c = command();
 
-    for (command, about) in commands {
-        app = app.subcommand(
-            SubCommand::with_name(command)
-                .about(about)
-                .subcommand(here.clone()),
-        );
-    }
-
-    app = app.subcommand(
-        SubCommand::with_name("leaves")
-            .about("list all leaves fern will consider")
-            .arg(
-                Arg::with_name("porcelain")
-                    .short("p")
-                    .long("porcelain")
-                    .required(false),
-            ),
-    );
-
-    let matches = app.get_matches();
-
-    match matches.subcommand() {
-        ("leaves", extra_args) => print_leaves(is_present(extra_args, "porcelain")),
-        (command, extra_args) => run_leaves(command, is_present(extra_args, "here")),
+    match c {
+        Options::Version => println!("fern version {}", version),
+        Options::Leaves(style) => print_leaves(style),
+        Options::Help => println!("helo"),
+        Options::Exec(c) => run_leaves(c),
     }
 }
 
-fn is_present(extra: Option<&ArgMatches>, name: &'static str) -> bool {
-    extra.map(|args| args.is_present(name)).unwrap_or(false)
+fn run_leaves(command: Commands) {
+    match command {
+        Commands::Build(Depth::Here) => run_single_leaf(PathBuf::from("./fern.yaml"), "build"),
+        Commands::Fmt(Depth::Here) => run_single_leaf(PathBuf::from("./fern.yaml"), "fmt"),
+        Commands::Test(Depth::Here) => run_single_leaf(PathBuf::from("./fern.yaml"), "test"),
+        Commands::Check(Depth::Here) => run_single_leaf(PathBuf::from("./fern.yaml"), "check"),
+        Commands::Build(Depth::Recursive) => run_all_leaves("build"),
+        Commands::Fmt(Depth::Recursive) => run_all_leaves("fmt"),
+        Commands::Test(Depth::Recursive) => run_all_leaves("test"),
+        Commands::Check(Depth::Recursive) => run_all_leaves("check"),
+    }
 }
 
-fn run_leaves(command: &str, here: bool) {
-    if here {
-        run_single_leaf(PathBuf::from("./fern.yaml"), command)
-    } else {
-        for leaf in find_all_leaves() {
-            run_single_leaf(leaf, command)
-        }
+fn run_all_leaves(command: &'static str) {
+    for leaf in find_all_leaves() {
+        run_single_leaf(leaf, command)
     }
 }
 
@@ -174,21 +213,22 @@ fn run_all_steps(steps: Steps, cwd: &Path) {
     }
 }
 
-fn print_leaves(porcelain: bool) {
+fn print_leaves(style: PrintStyle) {
     let fern_leaves = find_all_leaves();
-    if porcelain {
-        println!(
+    match style {
+        PrintStyle::Porcelain => println!(
             "{}",
             fern_leaves
                 .iter()
                 .map(|s| s.to_string_lossy().to_owned())
                 .collect::<Vec<_>>()
                 .join(" ")
-        );
-    } else {
-        println!("Considering leaves:");
-        for leaf in fern_leaves {
-            println!(" *\t{}", leaf.to_string_lossy())
+        ),
+        PrintStyle::Pretty => {
+            println!("Considering leaves:");
+            for leaf in fern_leaves {
+                println!(" *\t{}", leaf.to_string_lossy())
+            }
         }
-    }
+    };
 }
