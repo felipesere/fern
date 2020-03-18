@@ -142,12 +142,10 @@ const GIT_VERSION: &str = git_version!();
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn main() {
-    let version = format!("{} ({})", VERSION, GIT_VERSION);
-
     let res = match command() {
-        Options::Version => print_version(version),
-        Options::Leaves(style) => print_leaves(style),
+        Options::Version => print_version(),
         Options::Help => print_help(),
+        Options::Leaves(style) => print_leaves(style),
         Options::Exec(command, depth) => run_leaves(command, depth),
     };
 
@@ -156,14 +154,41 @@ fn main() {
     }
 }
 
-fn print_version(version: String) -> Result<()> {
+fn print_version() -> Result<()> {
+    let version = format!("{} ({})", VERSION, GIT_VERSION);
     println!("fern version {}", version);
-    Result::Ok(())
+    Ok(())
 }
 
 fn print_help() -> Result<()> {
-    println!("TODO: help");
-    Result::Ok(())
+    println!(
+        r#"
+    fern
+    Gives different parts of your mono-repo a unified interface to run certain tasks.
+
+    USAGE:
+        fern [FLAGS] [SUBCOMMAND] [OPTIONS]
+
+    FLAGS:
+        -v, --version    Prints version information
+
+    SUBCOMMANDS:
+        leaves      for showing all fern.yaml files. Has a -p | --porcelain option for better tooling
+        fmt         for anything formatting related
+        build       for anything related to building the app
+        test        for running any kind of tests
+        check       for things like type-checks or build-checks
+
+    These subcommands take an option "here" to not recurisively look for more yaml files. 
+    Examples
+
+        $: fern fmt  # will look for all fern.yaml files and run the 'fmt' target
+        $: fern fmt here  # will look only use the one in the current directory
+
+    Any other input will print this help menu.
+   "#
+    );
+    Ok(())
 }
 
 fn run_leaves(command: Commands, depth: Depth) -> Result<()> {
@@ -212,7 +237,7 @@ fn run_all_steps(steps: Steps, cwd: &Path) -> Result<()> {
         }
     }
 
-    Result::Ok(())
+    Ok(())
 }
 
 fn print_leaves(style: PrintStyle) -> Result<()> {
