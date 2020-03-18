@@ -5,17 +5,39 @@ use std::process::Command;
 use git_version::git_version;
 use ignore::WalkBuilder;
 use serde::Deserialize;
-use thiserror::Error;
+use snafu::{ResultExt, Snafu};
 
 use steps::Steps;
 
 mod steps;
 
-#[derive(Error, Debug)]
-enum OurError {
-    #[error("Did not find a yaml file")]
+#[derive(Debug, Snafu)]
+enum Error {
+    #[snafu(display("Did not find a fern.yaml file in here"))]
     NoLeafFound,
+
+    #[snafu(display("Could not read file at {}: {}", file.to_string_lossy(), source))]
+    CouldNotReadFile {
+        file: PathBuf,
+        source: serde_yaml::Error,
+    },
+    #[snafu(display("Did not find {}: {}", command, source))]
+    DidNotFindCommand {
+        command: String,
+        source: std::io::Error,
+    },
+
+    #[snafu(display("Failed to execute command '{}': {}", command, source))]
+    FailedToExecuteCommand {
+        command: String,
+        source: std::io::Error,
+    },
+
+    #[snafu(display("Failed to execute command '{}': exit code {}", command, exit_code))]
+    CommandDidNotSucceed { command: String, exit_code: i32 },
 }
+
+type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Eq, PartialEq)]
 enum Depth {
@@ -133,28 +155,32 @@ fn command() -> Options {
 const GIT_VERSION: &str = git_version!();
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
-fn main() -> Result<(), OurError> {
+fn main() {
     let version = format!("{} ({})", VERSION, GIT_VERSION);
 
-    match command() {
+    let res = match command() {
         Options::Version => print_version(version),
         Options::Leaves(style) => print_leaves(style),
         Options::Help => print_help(),
         Options::Exec(c) => run_leaves(c),
+    };
+
+    if let Result::Err(e) = res {
+        println!("{}", e)
     }
 }
 
-fn print_version(version: String) -> Result<(), OurError> {
+fn print_version(version: String) -> Result<()> {
     println!("fern version {}", version);
     Result::Ok(())
 }
 
-fn print_help() -> Result<(), OurError> {
+fn print_help() -> Result<()> {
     println!("TODO: help");
     Result::Ok(())
 }
 
-fn run_leaves(command: Commands) -> Result<(), OurError> {
+fn run_leaves(command: Commands) -> Result<()> {
     if command.is_recursive() {
         for leaf in find_all_leaves() {
             run_single_leaf(leaf, &command)?
@@ -165,15 +191,16 @@ fn run_leaves(command: Commands) -> Result<(), OurError> {
     }
 }
 
-fn run_single_leaf(leaf: PathBuf, command: &Commands) -> Result<(), OurError> {
+fn run_single_leaf(leaf: PathBuf, command: &Commands) -> Result<()> {
     if !leaf.exists() {
-        return Result::Err(OurError::NoLeafFound);
+        return Result::Err(Error::NoLeafFound);
     }
 
     let file = File::open(leaf.clone()).unwrap();
 
     let working_dir = leaf.parent().unwrap();
-    let config: FolderConfig = serde_yaml::from_reader(file).unwrap();
+    let config: FolderConfig =
+        serde_yaml::from_reader(file).context(CouldNotReadFile { file: leaf.clone() })?;
 
     let steps = command.pick(config);
 
@@ -181,22 +208,32 @@ fn run_single_leaf(leaf: PathBuf, command: &Commands) -> Result<(), OurError> {
 }
 
 // TODO error handling
-fn run_all_steps(steps: Steps, cwd: &Path) -> Result<(), OurError> {
+fn run_all_steps(steps: Steps, cwd: &Path) -> Result<()> {
     for value in steps.values {
-        Command::new("sh")
+        let ecode = Command::new("sh")
             .arg("-c")
             .arg(value.clone())
             .current_dir(cwd)
             .spawn()
-            .expect("unable to run command")
+            .context(DidNotFindCommand {
+                command: value.clone(),
+            })?
             .wait()
-            .expect("child process was not successful");
+            .context(FailedToExecuteCommand {
+                command: value.clone(),
+            })?;
+        if !ecode.success() {
+            return Result::Err(Error::CommandDidNotSucceed {
+                command: value.clone(),
+                exit_code: ecode.code().unwrap_or(-1),
+            });
+        }
     }
 
     Result::Ok(())
 }
 
-fn print_leaves(style: PrintStyle) -> Result<(), OurError> {
+fn print_leaves(style: PrintStyle) -> Result<()> {
     let fern_leaves = find_all_leaves();
     match style {
         PrintStyle::Porcelain => println!(
