@@ -1,13 +1,21 @@
-use git_version::git_version;
-use serde::Deserialize;
 use std::fs::File;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+
+use git_version::git_version;
+use ignore::WalkBuilder;
+use serde::Deserialize;
+use thiserror::Error;
 
 use steps::Steps;
 
-const GIT_VERSION: &str = git_version!();
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
-
 mod steps;
+
+#[derive(Error, Debug)]
+enum OurError {
+    #[error("Did not find a yaml file")]
+    NoLeafFound,
+}
 
 #[derive(Eq, PartialEq)]
 enum Depth {
@@ -66,10 +74,6 @@ struct FolderConfig {
     check: Steps,
 }
 
-use ignore::WalkBuilder;
-use std::path::{Path, PathBuf};
-use std::process::Command;
-
 fn find_all_leaves() -> Vec<PathBuf> {
     let mut fern_leaves = Vec::new();
     for result in WalkBuilder::new("./").build() {
@@ -126,38 +130,58 @@ fn command() -> Options {
     Options::Help
 }
 
-fn main() {
+const GIT_VERSION: &str = git_version!();
+const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+
+fn main() -> Result<(), OurError> {
     let version = format!("{} ({})", VERSION, GIT_VERSION);
 
     match command() {
-        Options::Version => println!("fern version {}", version),
+        Options::Version => print_version(version),
         Options::Leaves(style) => print_leaves(style),
-        Options::Help => println!("help"),
+        Options::Help => print_help(),
         Options::Exec(c) => run_leaves(c),
     }
 }
 
-fn run_leaves(command: Commands) {
+fn print_version(version: String) -> Result<(), OurError> {
+    println!("fern version {}", version);
+    Result::Ok(())
+}
+
+fn print_help() -> Result<(), OurError> {
+    println!("TODO: help");
+    Result::Ok(())
+}
+
+fn run_leaves(command: Commands) -> Result<(), OurError> {
     if command.is_recursive() {
         for leaf in find_all_leaves() {
-            run_single_leaf(leaf, &command)
+            run_single_leaf(leaf, &command)?
         }
+        return Ok(());
     } else {
         run_single_leaf(PathBuf::from("./fern.yaml"), &command)
     }
 }
 
-fn run_single_leaf(leaf: PathBuf, command: &Commands) {
+fn run_single_leaf(leaf: PathBuf, command: &Commands) -> Result<(), OurError> {
+    if !leaf.exists() {
+        return Result::Err(OurError::NoLeafFound);
+    }
+
     let file = File::open(leaf.clone()).unwrap();
+
     let working_dir = leaf.parent().unwrap();
     let config: FolderConfig = serde_yaml::from_reader(file).unwrap();
 
     let steps = command.pick(config);
 
-    run_all_steps(steps, working_dir);
+    run_all_steps(steps, working_dir)
 }
 
-fn run_all_steps(steps: Steps, cwd: &Path) {
+// TODO error handling
+fn run_all_steps(steps: Steps, cwd: &Path) -> Result<(), OurError> {
     for value in steps.values {
         Command::new("sh")
             .arg("-c")
@@ -168,9 +192,11 @@ fn run_all_steps(steps: Steps, cwd: &Path) {
             .wait()
             .expect("child process was not successful");
     }
+
+    Result::Ok(())
 }
 
-fn print_leaves(style: PrintStyle) {
+fn print_leaves(style: PrintStyle) -> Result<(), OurError> {
     let fern_leaves = find_all_leaves();
     match style {
         PrintStyle::Porcelain => println!(
@@ -188,4 +214,6 @@ fn print_leaves(style: PrintStyle) {
             }
         }
     };
+
+    Ok(())
 }
