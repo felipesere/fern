@@ -7,6 +7,7 @@ use ignore::WalkBuilder;
 use serde::Deserialize;
 use snafu::{ResultExt, Snafu};
 
+use pico_args::Arguments;
 use steps::Steps;
 
 mod steps;
@@ -99,42 +100,40 @@ fn find_all_leaves() -> Vec<PathBuf> {
     fern_leaves
 }
 
-fn command() -> Options {
-    let mut args = pico_args::Arguments::from_env();
-    let depth = if args.contains("here") {
-        Depth::Here
-    } else {
-        Depth::Recursive
+fn option(c: Commands, mut args: Arguments) -> Options {
+    if let Ok(Some(subcommand)) = args.subcommand() {
+        match subcommand.as_str() {
+            "here" => return Options::Exec(c, Depth::Here),
+            _ => {}
+        };
     };
 
-    if args.contains("fmt") {
-        return Options::Exec(Commands::Fmt, depth);
-    }
+    Options::Exec(c, Depth::Recursive)
+}
 
-    if args.contains("build") {
-        return Options::Exec(Commands::Build, depth);
-    }
-
-    if args.contains("check") {
-        return Options::Exec(Commands::Check, depth);
-    }
-
-    if args.contains("test") {
-        return Options::Exec(Commands::Test, depth);
-    }
-
-    if args.contains("leaves") {
-        if args.contains(["-p", "--porcelain"]) {
-            return Options::Leaves(PrintStyle::Porcelain);
-        } else {
-            return Options::Leaves(PrintStyle::Pretty);
-        }
-    }
+fn command() -> Options {
+    let mut args = pico_args::Arguments::from_env();
 
     if args.contains(["-v", "--version"]) {
         return Options::Version;
     }
 
+    if let Ok(Some(cmd)) = args.subcommand() {
+        match cmd.as_str() {
+            "fmt" => return option(Commands::Fmt, args),
+            "build" => return option(Commands::Build, args),
+            "check" => return option(Commands::Check, args),
+            "test" => return option(Commands::Test, args),
+            "leaves" => {
+                if args.contains(["-p", "--porcelain"]) {
+                    return Options::Leaves(PrintStyle::Porcelain);
+                } else {
+                    return Options::Leaves(PrintStyle::Pretty);
+                }
+            }
+            _ => {}
+        }
+    }
     Options::Help
 }
 
