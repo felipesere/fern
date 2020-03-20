@@ -1,0 +1,1 @@
+fmt: echo "Running fmt from within bar"

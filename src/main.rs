@@ -217,7 +217,6 @@ fn run_single_leaf(leaf: PathBuf, command: &Commands) -> Result<()> {
     run_all_steps(steps, working_dir)
 }
 
-// TODO error handling
 fn run_all_steps(steps: Steps, cwd: &Path) -> Result<()> {
     for value in steps.values {
         let ecode = Command::new("sh")
