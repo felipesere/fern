@@ -101,14 +101,11 @@ fn find_all_leaves() -> Vec<PathBuf> {
 }
 
 fn option(c: Commands, mut args: Arguments) -> Options {
-    if let Ok(Some(subcommand)) = args.subcommand() {
-        match subcommand.as_str() {
-            "here" => return Options::Exec(c, Depth::Here),
-            _ => {}
-        };
-    };
-
-    Options::Exec(c, Depth::Recursive)
+    if let Some("here") = args.subcommand().ok().flatten().as_deref() {
+        Options::Exec(c, Depth::Here)
+    } else {
+        Options::Exec(c, Depth::Recursive)
+    }
 }
 
 fn command() -> Options {
