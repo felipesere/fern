@@ -75,6 +75,9 @@ You can give the argument `-p` or `--porcelain` to get all files in a single lin
 vim -p $(fern leaves -p)
 ```
 
+Here is a demo of `fern` running in a different repo of mine:
+[![asciicast](https://asciinema.org/a/QbKh6hrb8I8bnmvMcSDq3PHkP.png)](https://asciinema.org/a/QbKh6hrb8I8bnmvMcSDq3PHkP)
+
 ## Installing and contributing
 
 At the moment, the best way to use is to clone the source and compile it with the latest Rust.
