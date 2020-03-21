@@ -1,4 +1,4 @@
-![](https://github.com/felipesere/fern/workflows/build/badge.svg)
+![https://github.com/felipesere/fern/actions](https://github.com/felipesere/fern/workflows/build/badge.svg)
 
 
 # Fern
