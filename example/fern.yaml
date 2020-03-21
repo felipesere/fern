@@ -1,0 +1,3 @@
+check: does not exist
+test: exit 12
+build: echo "Foooooo"

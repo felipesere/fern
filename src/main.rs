@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{self, Command};
 
 use git_version::git_version;
 use ignore::WalkBuilder;
@@ -170,7 +170,8 @@ fn main() {
     };
 
     if let Result::Err(e) = res {
-        println!("{}", e)
+        println!("{}", e);
+        process::exit(-1);
     }
 }
 

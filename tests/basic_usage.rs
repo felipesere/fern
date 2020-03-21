@@ -61,7 +61,7 @@ fn it_warns_if_there_are_no_fern_files_anywhere() {
     let assert = cd("./example/empty").run("fern fmt");
 
     assert
-        .success()
+        .failure()
         .stdout(c("Did not find any fern.yaml file"));
 }
 
@@ -70,7 +70,7 @@ fn it_warns_if_there_is_no_fern_file_here() {
     let assert = cd("./example/empty").run("fern fmt here");
 
     assert
-        .success()
+        .failure()
         .stdout(c("Did not find a fern.yaml file in here"));
 }
 
@@ -79,6 +79,18 @@ fn it_allows_the_user_to_suppress_the_missing_file_warning() {
     let assert = cd("./example/empty").run("fern fmt here -q");
 
     assert.success().stdout(predicates::str::is_empty());
+}
+
+#[test]
+fn it_reports_when_commands_fail() {
+    let assert = cd("./example").run("fern check here");
+
+    assert
+        .failure()
+        .stdout(c(
+            "Failed to execute command 'does not exist': exit code 127",
+        ))
+        .stderr(c("sh: does: command not found"));
 }
 
 struct Dir {
