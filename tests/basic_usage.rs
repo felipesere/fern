@@ -1,20 +1,16 @@
-use assert_cmd::Command;
+use assert_cmd::{assert::Assert, Command};
 use predicates::{prelude::PredicateBooleanExt, str::contains as c};
 
 #[test]
 fn it_prints_the_version() {
-    let mut cmd = Command::cargo_bin("fern").unwrap();
-
-    let assert = cmd.arg("-v").assert();
+    let assert = run("fern -v");
 
     assert.success().stdout(c("fern version"));
 }
 
 #[test]
 fn it_prints_some_help() {
-    let mut cmd = Command::cargo_bin("fern").unwrap();
-
-    let assert = cmd.arg("help").assert();
+    let assert = run("fern help");
 
     assert.success().stdout(c(
         "Gives different parts of your mono-repo a unified interface to run certain tasks.",
@@ -22,9 +18,7 @@ fn it_prints_some_help() {
 }
 #[test]
 fn it_runs_fmt_for_the_entire_directory() {
-    let mut cmd = Command::cargo_bin("fern").unwrap();
-
-    let assert = cmd.current_dir("./example").arg("fmt").assert();
+    let assert = cd("./example").run("fern fmt");
 
     assert.success().stdout(
         c("Running fmt from within foo/batz")
@@ -34,18 +28,14 @@ fn it_runs_fmt_for_the_entire_directory() {
 }
 #[test]
 fn it_runs_fmt_for_the_current_folder() {
-    let mut cmd = Command::cargo_bin("fern").unwrap();
-
-    let assert = cmd.arg("fmt").arg("here").assert();
+    let assert = run("fern fmt here");
 
     assert.success().stdout("running fmt\n");
 }
 
 #[test]
 fn it_list_all_available_leaves() {
-    let mut cmd = Command::cargo_bin("fern").unwrap();
-
-    let assert = cmd.current_dir("./example").arg("leaves").assert();
+    let assert = cd("./example").run("fern leaves");
 
     assert.success().stdout(
         c("Considering leaves:")
@@ -57,13 +47,7 @@ fn it_list_all_available_leaves() {
 
 #[test]
 fn it_prints_the_leaves_woithout_extra_formatting() {
-    let mut cmd = Command::cargo_bin("fern").unwrap();
-
-    let assert = cmd
-        .current_dir("./example")
-        .arg("leaves")
-        .arg("-p")
-        .assert();
+    let assert = cd("./example").run("fern leaves -p");
 
     assert.success().stdout(
         c("./foo/batz/fern.yaml")
@@ -74,9 +58,7 @@ fn it_prints_the_leaves_woithout_extra_formatting() {
 
 #[test]
 fn it_warns_if_there_are_no_fern_files_anywhere() {
-    let mut cmd = Command::cargo_bin("fern").unwrap();
-
-    let assert = cmd.current_dir("./example/empty").arg("fmt").assert();
+    let assert = cd("./example/empty").run("fern fmt");
 
     assert
         .success()
@@ -85,13 +67,7 @@ fn it_warns_if_there_are_no_fern_files_anywhere() {
 
 #[test]
 fn it_warns_if_there_is_no_fern_file_here() {
-    let mut cmd = Command::cargo_bin("fern").unwrap();
-
-    let assert = cmd
-        .current_dir("./example/empty")
-        .arg("fmt")
-        .arg("here")
-        .assert();
+    let assert = cd("./example/empty").run("fern fmt here");
 
     assert
         .success()
@@ -100,14 +76,31 @@ fn it_warns_if_there_is_no_fern_file_here() {
 
 #[test]
 fn it_allows_the_user_to_suppress_the_missing_file_warning() {
-    let mut cmd = Command::cargo_bin("fern").unwrap();
-
-    let assert = cmd
-        .current_dir("./example/empty")
-        .arg("fmt")
-        .arg("here")
-        .arg("-q")
-        .assert();
+    let assert = cd("./example/empty").run("fern fmt here -q");
 
     assert.success().stdout(predicates::str::is_empty());
+}
+
+struct Dir {
+    v: &'static str,
+}
+
+impl Dir {
+    fn run(self, cli: &'static str) -> Assert {
+        let mut fern = Command::cargo_bin("fern").unwrap();
+        fern.current_dir(self.v);
+
+        let args = cli.split(" ").into_iter().skip(1).collect::<Vec<_>>();
+        fern.args(args);
+
+        fern.assert()
+    }
+}
+
+fn run(cli: &'static str) -> Assert {
+    cd("./").run(cli)
+}
+
+fn cd(dir: &'static str) -> Dir {
+    Dir { v: dir }
 }
