@@ -1,6 +1,7 @@
 # Fern
 
 ![build](https://github.com/felipesere/fern/workflows/build/badge.svg?branch=master)
+![Coverage](https://img.shields.io/codecov/c/github/felipesere/fern)
 ![License](https://img.shields.io/github/license/felipesere/fern)
 
 
