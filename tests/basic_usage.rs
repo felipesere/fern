@@ -2,6 +2,14 @@ use assert_cmd::Command;
 use predicates::{prelude::PredicateBooleanExt, str::contains as c};
 
 #[test]
+fn it_prints_the_version() {
+    let mut cmd = Command::cargo_bin("fern").unwrap();
+
+    let assert = cmd.arg("-v").assert();
+
+    assert.success().stdout(c("fern version"));
+}
+#[test]
 fn it_runs_fmt_for_the_entire_directory() {
     let mut cmd = Command::cargo_bin("fern").unwrap();
 
