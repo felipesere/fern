@@ -1,7 +1,8 @@
-![https://github.com/felipesere/fern/actions](https://github.com/felipesere/fern/workflows/build/badge.svg)
-
-
 # Fern
+
+![Build](https://img.shields.io/github/workflow/status/felipesere/fern/build)
+![License](https://img.shields.io/github/license/felipesere/fern)
+
 
 `fern` is not a build tool
 It's closer to a command runner. Its gives different parts of your mono-repo a unified interface to run certain tasks.
