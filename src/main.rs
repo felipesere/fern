@@ -95,6 +95,12 @@ struct FolderConfig {
     check: Steps,
 }
 
+impl FolderConfig {
+    fn from_yaml<R: std::io::Read>(source: R) -> Result<Self> {
+        serde_yaml::from_reader(source).context(FailedToReadFernFile {})
+    }
+}
+
 fn find_all_leaves() -> Vec<PathBuf> {
     let mut fern_leaves = Vec::new();
     for result in WalkBuilder::new("./").build() {
@@ -239,7 +245,7 @@ fn run_single_leaf(leaf: PathBuf, command: &Commands) -> Result<()> {
     let file = File::open(leaf.clone()).unwrap();
 
     let working_dir = leaf.parent().unwrap();
-    let config: FolderConfig = FolderConfig::from_yaml(file)?;
+    let config = FolderConfig::from_yaml(file)?;
 
     let steps = command.pick(config);
 
@@ -289,12 +295,6 @@ fn print_leaves(style: PrintStyle) -> Result<()> {
     Ok(())
 }
 
-impl FolderConfig {
-    fn from_yaml<R: std::io::Read>(source: R) -> Result<Self> {
-        serde_yaml::from_reader(source).context(FailedToReadFernFile {})
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use crate::FolderConfig;
@@ -331,16 +331,10 @@ mod tests {
         has no value:
        "#;
 
-        let error = FolderConfig::from_yaml(yaml.as_bytes());
+        let error = FolderConfig::from_yaml(yaml.as_bytes())
+            .unwrap_err()
+            .to_string();
 
-        if error.is_ok() {
-            assert!(false, "invalid YAML did not turn into an error")
-        }
-
-        let error = error.unwrap_err();
-
-        let f = error.to_string();
-
-        assert_eq!("There was an error when reading the file: mapping values are not allowed in this context at line 2 column 21", f)
+        assert_eq!("There was an error when reading the file: mapping values are not allowed in this context at line 2 column 21", error)
     }
 }
