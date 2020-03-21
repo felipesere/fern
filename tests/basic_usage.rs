@@ -78,3 +78,17 @@ fn it_warns_if_there_is_no_fern_file_here() {
         .success()
         .stdout(c("Did not find a fern.yaml file in here"));
 }
+
+#[test]
+fn it_allows_the_user_to_suppress_the_missing_file_warning() {
+    let mut cmd = Command::cargo_bin("fern").unwrap();
+
+    let assert = cmd
+        .current_dir("./example/empty")
+        .arg("fmt")
+        .arg("here")
+        .arg("-q")
+        .assert();
+
+    assert.success().stdout(predicates::str::is_empty());
+}

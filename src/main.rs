@@ -37,7 +37,7 @@ enum Error {
 
 type Result<T, E = Error> = std::result::Result<T, E>;
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Copy, Clone)]
 enum Depth {
     Here,
     Recursive,
@@ -67,10 +67,16 @@ impl Commands {
 }
 
 enum Options {
-    Exec(Commands, Depth),
+    Exec(Commands, ExecOptions),
     Leaves(PrintStyle),
     Help,
     Version,
+}
+
+#[derive(Clone, Copy)]
+struct ExecOptions {
+    depth: Depth,
+    quiet: bool,
 }
 
 #[derive(Debug, PartialEq, Deserialize)]
@@ -104,11 +110,15 @@ fn find_all_leaves() -> Vec<PathBuf> {
 }
 
 fn option(c: Commands, mut args: Arguments) -> Options {
-    if let Some("here") = args.subcommand().ok().flatten().as_deref() {
-        Options::Exec(c, Depth::Here)
+    let depth = if let Some("here") = args.subcommand().ok().flatten().as_deref() {
+        Depth::Here
     } else {
-        Options::Exec(c, Depth::Recursive)
-    }
+        Depth::Recursive
+    };
+
+    let quiet = args.contains(["-q", "--quiet"]);
+
+    Options::Exec(c, ExecOptions { depth, quiet })
 }
 
 fn command() -> Options {
@@ -145,7 +155,14 @@ fn main() {
         Options::Version => print_version(),
         Options::Help => print_help(),
         Options::Leaves(style) => print_leaves(style),
-        Options::Exec(command, depth) => run_leaves(command, depth),
+        Options::Exec(command, opts) => {
+            let res = run_leaves(command, opts);
+            if opts.quiet {
+                Ok(())
+            } else {
+                res
+            }
+        }
     };
 
     if let Result::Err(e) = res {
@@ -178,9 +195,12 @@ fn print_help() -> Result<()> {
         test        for running any kind of tests
         check       for things like type-checks or build-checks
 
-    These subcommands take an option "here" to not recurisively look for more yaml files. 
-    Examples
+    [OPTIONS]
+        here        to only look in the current dir for a fern.yaml file, not recurisively searching the entire tree 
+        -q | --quiet  to silence errors when no fern.yaml file is present
 
+
+    Examples
         $: fern fmt  # will look for all fern.yaml files and run the 'fmt' target
         $: fern fmt here  # will look only use the one in the current directory
 
@@ -190,16 +210,17 @@ fn print_help() -> Result<()> {
     Ok(())
 }
 
-fn run_leaves(command: Commands, depth: Depth) -> Result<()> {
-    if depth == Depth::Recursive {
+fn run_leaves(command: Commands, opts: ExecOptions) -> Result<()> {
+    if opts.depth == Depth::Recursive {
         let leaves = find_all_leaves();
         if leaves.is_empty() {
-            return Result::Err(Error::NoLeafFoundAnywhere);
+            Result::Err(Error::NoLeafFoundAnywhere)
+        } else {
+            for leaf in leaves {
+                run_single_leaf(leaf, &command)?;
+            }
+            Ok(())
         }
-        for leaf in leaves {
-            run_single_leaf(leaf, &command)?
-        }
-        Ok(())
     } else {
         run_single_leaf(PathBuf::from("./fern.yaml"), &command)
     }
