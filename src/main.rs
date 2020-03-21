@@ -337,4 +337,15 @@ mod tests {
 
         assert_eq!("There was an error when reading the file: mapping values are not allowed in this context at line 2 column 21", error)
     }
+
+    #[test]
+    fn it_reports_errors_for_known_keys() {
+        let yaml = "fmt: 12";
+
+        let error = FolderConfig::from_yaml(yaml.as_bytes())
+            .unwrap_err()
+            .to_string();
+
+        assert_eq!("There was an error when reading the file: fmt: invalid type: integer `12`, expected either single string or sequence of strings at line 1 column 6", error)
+    }
 }
