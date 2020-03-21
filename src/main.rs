@@ -25,6 +25,10 @@ enum Error {
         file: PathBuf,
         source: serde_yaml::Error,
     },
+
+    #[snafu(display("There was an error when reading the file: {}", source))]
+    FailedToReadFernFile { source: serde_yaml::Error },
+
     #[snafu(display("Did not find {}: {}", command, source))]
     DidNotFindCommand {
         command: String,
@@ -234,8 +238,7 @@ fn run_single_leaf(leaf: PathBuf, command: &Commands) -> Result<()> {
     let file = File::open(leaf.clone()).unwrap();
 
     let working_dir = leaf.parent().unwrap();
-    let config: FolderConfig =
-        serde_yaml::from_reader(file).context(CouldNotReadFile { file: leaf.clone() })?;
+    let config: FolderConfig = FolderConfig::from_yaml(file)?;
 
     let steps = command.pick(config);
 
@@ -283,4 +286,60 @@ fn print_leaves(style: PrintStyle) -> Result<()> {
     };
 
     Ok(())
+}
+
+impl FolderConfig {
+    fn from_yaml<R: std::io::Read>(source: R) -> Result<Self> {
+        serde_yaml::from_reader(source).context(FailedToReadFernFile {})
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::FolderConfig;
+
+    #[test]
+    fn it_parses_a_correct_yaml_file() {
+        let yaml = r#"
+       fmt: Something
+       build: Fancy
+       "#;
+
+        let folder = FolderConfig::from_yaml(yaml.as_bytes()).unwrap();
+
+        assert_eq!(folder.fmt.values, vec![String::from("Something")]);
+        assert_eq!(folder.build.values, vec![String::from("Fancy")]);
+    }
+
+    #[test]
+    fn it_ignores_unknown_fields() {
+        let yaml = r#"
+       fmt: Something
+       not: Important
+       something: 12
+       "#;
+
+        let folder = FolderConfig::from_yaml(yaml.as_bytes()).unwrap();
+
+        assert_eq!(folder.fmt.values, vec![String::from("Something")]);
+    }
+
+    #[test]
+    fn it_reports_adequate_errors() {
+        let yaml = r#"fmt: Something
+        has no value:
+       "#;
+
+        let error = FolderConfig::from_yaml(yaml.as_bytes());
+
+        if error.is_ok() {
+            assert!(false, "invalid YAML did not turn into an error")
+        }
+
+        let error = error.unwrap_err();
+
+        let f = error.to_string();
+
+        assert_eq!("There was an error when reading the file: mapping values are not allowed in this context at line 2 column 21", f)
+    }
 }
