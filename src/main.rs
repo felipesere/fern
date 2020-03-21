@@ -15,7 +15,10 @@ mod steps;
 #[derive(Debug, Snafu)]
 enum Error {
     #[snafu(display("Did not find a fern.yaml file in here"))]
-    NoLeafFound,
+    NoLeafFoundHere,
+
+    #[snafu(display("Did not find any fern.yaml files"))]
+    NoLeafFoundAnywhere,
 
     #[snafu(display("Could not read file at {}: {}", file.to_string_lossy(), source))]
     CouldNotReadFile {
@@ -189,7 +192,11 @@ fn print_help() -> Result<()> {
 
 fn run_leaves(command: Commands, depth: Depth) -> Result<()> {
     if depth == Depth::Recursive {
-        for leaf in find_all_leaves() {
+        let leaves = find_all_leaves();
+        if leaves.is_empty() {
+            return Result::Err(Error::NoLeafFoundAnywhere);
+        }
+        for leaf in leaves {
             run_single_leaf(leaf, &command)?
         }
         Ok(())
@@ -200,7 +207,7 @@ fn run_leaves(command: Commands, depth: Depth) -> Result<()> {
 
 fn run_single_leaf(leaf: PathBuf, command: &Commands) -> Result<()> {
     if !leaf.exists() {
-        return Result::Err(Error::NoLeafFound);
+        return Result::Err(Error::NoLeafFoundHere);
     }
 
     let file = File::open(leaf.clone()).unwrap();

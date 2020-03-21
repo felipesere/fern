@@ -52,3 +52,29 @@ fn it_prints_the_leaves_woithout_extra_formatting() {
             .and(c("./bar/fern.yaml")),
     );
 }
+
+#[test]
+fn it_warns_if_there_are_no_fern_files_anywhere() {
+    let mut cmd = Command::cargo_bin("fern").unwrap();
+
+    let assert = cmd.current_dir("./example/empty").arg("fmt").assert();
+
+    assert
+        .success()
+        .stdout(c("Did not find any fern.yaml file"));
+}
+
+#[test]
+fn it_warns_if_there_is_no_fern_file_here() {
+    let mut cmd = Command::cargo_bin("fern").unwrap();
+
+    let assert = cmd
+        .current_dir("./example/empty")
+        .arg("fmt")
+        .arg("here")
+        .assert();
+
+    assert
+        .success()
+        .stdout(c("Did not find a fern.yaml file in here"));
+}
