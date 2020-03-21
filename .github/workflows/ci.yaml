@@ -88,6 +88,5 @@ jobs:
 
       - uses: codecov/codecov-action@v1
         with:
-          config: "./.github/grcov.yaml"
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./lcov.info
