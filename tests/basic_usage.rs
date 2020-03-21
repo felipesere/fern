@@ -90,7 +90,7 @@ fn it_reports_when_commands_fail() {
         .stdout(c(
             "Failed to execute command 'does not exist': exit code 127",
         ))
-        .stderr(c("sh: does: command not found"));
+        .stderr(c("sh:").and(c("does:")).and(c("not found")));
 }
 
 struct Dir {
