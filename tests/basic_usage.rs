@@ -9,6 +9,17 @@ fn it_prints_the_version() {
 
     assert.success().stdout(c("fern version"));
 }
+
+#[test]
+fn it_prints_some_help() {
+    let mut cmd = Command::cargo_bin("fern").unwrap();
+
+    let assert = cmd.arg("help").assert();
+
+    assert.success().stdout(c(
+        "Gives different parts of your mono-repo a unified interface to run certain tasks.",
+    ));
+}
 #[test]
 fn it_runs_fmt_for_the_entire_directory() {
     let mut cmd = Command::cargo_bin("fern").unwrap();
