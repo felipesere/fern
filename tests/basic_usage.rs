@@ -1,5 +1,7 @@
-use assert_cmd::{assert::Assert, Command};
-use predicates::{prelude::PredicateBooleanExt, str::contains as c};
+use utils::*;
+
+#[path = "./utils.rs"]
+mod utils;
 
 #[test]
 fn it_prints_the_version() {
@@ -98,28 +100,4 @@ fn it_reports_when_commands_fail() {
             "Failed to execute command 'does not exist': exit code 127",
         ))
         .stderr(c("sh:").and(c("does:")).and(c("not found")));
-}
-
-struct Dir {
-    v: &'static str,
-}
-
-impl Dir {
-    fn run(self, cli: &'static str) -> Assert {
-        let mut fern = Command::cargo_bin("fern").unwrap();
-        fern.current_dir(self.v);
-
-        let args = cli.split(" ").into_iter().skip(1).collect::<Vec<_>>();
-        fern.args(args);
-
-        fern.assert()
-    }
-}
-
-fn run(cli: &'static str) -> Assert {
-    cd("./").run(cli)
-}
-
-fn cd(dir: &'static str) -> Dir {
-    Dir { v: dir }
 }
