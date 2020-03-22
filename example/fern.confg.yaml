@@ -1,0 +1,8 @@
+seeds:
+  rust:
+    fmt: echo "cargo fmt"
+    test: echo "cargo test"
+    build: echo "cargo build --release"
+  elixir:
+    fmt: echo "mix format ."
+    test: echo "mix test"

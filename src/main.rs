@@ -72,6 +72,7 @@ impl Commands {
 
 enum Options {
     Exec(Commands, ExecOptions),
+    Seed,
     Leaves(PrintStyle),
     Help,
     Version,
@@ -150,6 +151,9 @@ fn command() -> Options {
                     return Options::Leaves(PrintStyle::Pretty);
                 }
             }
+            "seed" => {
+                return Options::Seed;
+            }
             _ => {}
         }
     }
@@ -172,6 +176,7 @@ fn main() {
                 res
             }
         }
+        Options::Seed => seed_folder(),
     };
 
     if let Result::Err(e) = res {
@@ -291,6 +296,11 @@ fn print_leaves(style: PrintStyle) -> Result<()> {
         }
     };
 
+    Ok(())
+}
+
+fn seed_folder() -> Result<()> {
+    println!("Created new fern.yaml file for rust");
     Ok(())
 }
 

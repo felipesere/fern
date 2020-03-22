@@ -5,17 +5,31 @@ use assert_cmd::{assert::Assert, Command};
 pub use predicates::{prelude::PredicateBooleanExt, str::contains as c};
 pub(crate) struct Dir {
     v: &'static str,
+    env: &'static str,
 }
 
 impl Dir {
     pub fn run(self, cli: &'static str) -> Assert {
         let mut fern = Command::cargo_bin("fern").unwrap();
+
+        if self.env != "" {
+            if let [key, value] = &self.env.split("=").collect::<Vec<&str>>()[..] {
+                fern.env(key, value);
+            }
+        }
+
         fern.current_dir(self.v);
 
         let args = cli.split(" ").into_iter().skip(1).collect::<Vec<_>>();
         fern.args(args);
 
         fern.assert()
+    }
+
+    pub fn env(mut self, env: &'static str) -> Dir {
+        self.env = env;
+
+        self
     }
 }
 
@@ -24,5 +38,5 @@ pub(crate) fn run(cli: &'static str) -> Assert {
 }
 
 pub(crate) fn cd(dir: &'static str) -> Dir {
-    Dir { v: dir }
+    Dir { v: dir, env: "" }
 }
