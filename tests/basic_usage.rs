@@ -27,10 +27,10 @@ fn it_runs_fmt_for_the_entire_directory() {
     );
 }
 #[test]
-fn it_runs_fmt_for_the_current_folder() {
-    let assert = run("fern fmt here");
+fn it_runs_build_for_the_current_folder() {
+    let assert = cd("./example").run("fern build here");
 
-    assert.success().stdout("running fmt\n");
+    assert.success().stdout(c("Fooooo"));
 }
 
 #[test]
