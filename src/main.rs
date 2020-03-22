@@ -1,6 +1,9 @@
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::process::{self, Command};
+use std::{
+    collections::HashMap,
+    process::{self, Command},
+};
 
 use git_version::git_version;
 use ignore::WalkBuilder;
@@ -37,6 +40,15 @@ enum Error {
 
     #[snafu(display("Failed to execute command '{}': exit code {}", command, exit_code))]
     CommandDidNotSucceed { command: String, exit_code: i32 },
+
+    #[snafu(display("No langauge defiend to seed the fern.yaml file with."))]
+    NoLanguageDefined,
+
+    #[snafu(display("Config file at {:?} does not exist", location))]
+    ConfigDoesNotExist { location: PathBuf },
+
+    #[snafu(display("Did not find {} in config", language))]
+    DidNotFindLanguageForSeedfile { language: String },
 }
 
 type Result<T, E = Error> = std::result::Result<T, E>;
@@ -72,7 +84,7 @@ impl Commands {
 
 enum Options {
     Exec(Commands, ExecOptions),
-    Seed,
+    Seed { language: Option<String> },
     Leaves(PrintStyle),
     Help,
     Version,
@@ -152,7 +164,8 @@ fn command() -> Options {
                 }
             }
             "seed" => {
-                return Options::Seed;
+                let language = args.subcommand().ok().flatten();
+                return Options::Seed { language };
             }
             _ => {}
         }
@@ -176,7 +189,13 @@ fn main() {
                 res
             }
         }
-        Options::Seed => seed_folder(),
+        Options::Seed { language } => {
+            if let Some(lang) = language {
+                seed_folder(lang)
+            } else {
+                Err(Error::NoLanguageDefined)
+            }
+        }
     };
 
     if let Result::Err(e) = res {
@@ -299,9 +318,42 @@ fn print_leaves(style: PrintStyle) -> Result<()> {
     Ok(())
 }
 
-fn seed_folder() -> Result<()> {
-    println!("Created new fern.yaml file for rust");
-    Ok(())
+fn config_file() -> PathBuf {
+    std::env::var("FERN_CONFIG")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| {
+            let mut home = dirs::home_dir().unwrap();
+            home.push(".fern.config.yaml");
+            home
+        })
+}
+
+#[derive(Debug, PartialEq, Deserialize)]
+struct Config {
+    seeds: HashMap<String, serde_yaml::Value>,
+}
+
+fn load(p: PathBuf) -> Config {
+    serde_yaml::from_reader(File::open(p).unwrap()).unwrap()
+}
+
+fn seed_folder(lang: String) -> Result<()> {
+    let config = config_file();
+
+    if !config.exists() {
+        return Err(Error::ConfigDoesNotExist { location: config });
+    }
+
+    let config = load(config);
+
+    if let Some(yaml) = config.seeds.get(&lang) {
+        let f = File::create("fern.yaml").unwrap();
+        serde_yaml::to_writer(f, yaml).expect("this to work");
+        println!("Created new fern.yaml file for rust");
+        Ok(())
+    } else {
+        Err(Error::DidNotFindLanguageForSeedfile { language: lang })
+    }
 }
 
 #[cfg(test)]

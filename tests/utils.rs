@@ -3,9 +3,10 @@ use assert_cmd::{assert::Assert, Command};
 
 // re-export for all modules to share
 pub use predicates::{prelude::PredicateBooleanExt, str::contains as c};
+use std::path::PathBuf;
 pub(crate) struct Dir {
     v: &'static str,
-    env: &'static str,
+    env: String,
 }
 
 impl Dir {
@@ -26,8 +27,8 @@ impl Dir {
         fern.assert()
     }
 
-    pub fn env(mut self, env: &'static str) -> Dir {
-        self.env = env;
+    pub fn env<S: Into<String>>(mut self, env: S) -> Dir {
+        self.env = env.into();
 
         self
     }
@@ -38,5 +39,11 @@ pub(crate) fn run(cli: &'static str) -> Assert {
 }
 
 pub(crate) fn cd(dir: &'static str) -> Dir {
-    Dir { v: dir, env: "" }
+    if !PathBuf::from(dir).exists() {
+        panic!("could not 'cd' into non-existing file: {}", dir);
+    }
+    Dir {
+        v: dir,
+        env: "".into(),
+    }
 }
