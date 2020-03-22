@@ -119,7 +119,7 @@ fn find_all_leaves() -> Vec<PathBuf> {
     fern_leaves
 }
 
-fn option(c: Commands, mut args: Arguments) -> Options {
+fn opts(mut args: Arguments) -> ExecOptions {
     let depth = if let Some("here") = args.subcommand().ok().flatten().as_deref() {
         Depth::Here
     } else {
@@ -127,8 +127,7 @@ fn option(c: Commands, mut args: Arguments) -> Options {
     };
 
     let quiet = args.contains(["-q", "--quiet"]);
-
-    Options::Exec(c, ExecOptions { depth, quiet })
+    ExecOptions { depth, quiet }
 }
 
 fn command() -> Options {
@@ -140,10 +139,10 @@ fn command() -> Options {
 
     if let Ok(Some(cmd)) = args.subcommand() {
         match cmd.as_str() {
-            "fmt" => return option(Commands::Fmt, args),
-            "build" => return option(Commands::Build, args),
-            "check" => return option(Commands::Check, args),
-            "test" => return option(Commands::Test, args),
+            "fmt" => return Options::Exec(Commands::Fmt, opts(args)),
+            "build" => return Options::Exec(Commands::Build, opts(args)),
+            "check" => return Options::Exec(Commands::Check, opts(args)),
+            "test" => return Options::Exec(Commands::Test, opts(args)),
             "leaves" => {
                 if args.contains(["-p", "--porcelain"]) {
                     return Options::Leaves(PrintStyle::Porcelain);

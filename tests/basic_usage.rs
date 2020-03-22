@@ -34,6 +34,13 @@ fn it_runs_fmt_for_the_current_folder() {
 }
 
 #[test]
+fn runs_multiple_tests_from_the_fern_file() {
+    let assert = cd("./example").run("fern fmt here");
+
+    assert.success().stdout(c("The first").and(c("The second")));
+}
+
+#[test]
 fn it_list_all_available_leaves() {
     let assert = cd("./example").run("fern leaves");
 
