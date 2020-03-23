@@ -5,7 +5,6 @@ use std::{
     process::{self, Command},
 };
 
-use git_version::git_version;
 use ignore::WalkBuilder;
 use serde::Deserialize;
 use snafu::{ResultExt, Snafu};
@@ -173,9 +172,6 @@ fn command() -> Options {
     Options::Help
 }
 
-const GIT_VERSION: &str = git_version!();
-const VERSION: &str = env!("CARGO_PKG_VERSION");
-
 fn main() {
     let res = match command() {
         Options::Version => print_version(),
@@ -205,8 +201,7 @@ fn main() {
 }
 
 fn print_version() -> Result<()> {
-    let version = format!("{} ({})", VERSION, GIT_VERSION);
-    println!("fern version {}", version);
+    println!("fern version {}", env!("CARGO_PKG_VERSION"));
     Ok(())
 }
 

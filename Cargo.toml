@@ -19,7 +19,6 @@ categories = ["command-line-interface", "command-line-utilities"]
 ignore = "0.4.12"
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.8.11"
-git-version = "0.3.4"
 pico-args = "0.3.1"
 snafu = "0.6.3"
 dirs = "2.0.2"
