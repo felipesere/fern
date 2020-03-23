@@ -80,6 +80,29 @@ vim -p $(fern leaves -p)
 Here is a demo of `fern` running in a different repo of mine:
 [![asciicast](https://asciinema.org/a/QbKh6hrb8I8bnmvMcSDq3PHkP.png)](https://asciinema.org/a/QbKh6hrb8I8bnmvMcSDq3PHkP)
 
+## Seeding ferns and configuration
+Using `fern` should require as little configuration as possible, especially since its feature-set is so small.
+There is one feature that needs a global configuration file though: `fern seed $name`.
+`seed` will create a `fern.yaml` file for you, based on the `$name` and what is globally configured.
+The configuration file is expected in `$HOME/.fern.config.yaml` (`$HOME` will vary per OS) but you can change it using the
+`FERN_CONFIG` environment variable.
+
+Here is a sample config file:
+```yaml
+seeds:
+  rust:
+     fmt: cargo fmt
+     test: cargo test
+     build: argo build --release
+  elixir:
+     fmt: mix format .
+     test: mix test
+```
+
+Under the key `seeds` you can name different chunks that look like a `fern.yaml` file.
+Running `fern seed rust` will then copy that chunk into a local `fern.yaml`.
+This is practical if you have multiple projects that need similar configs.
+
 ## Installing and contributing
 
 At the moment, the best way to use is to clone the source and compile it with the latest Rust.
