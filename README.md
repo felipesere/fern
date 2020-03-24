@@ -3,6 +3,7 @@
 ![build](https://github.com/felipesere/fern/workflows/build/badge.svg?branch=master)
 [![Coverage](https://codecov.io/gh/felipesere/fern/branch/master/graph/badge.svg)](https://codecov.io/gh/felipesere/fern)
 ![License](https://img.shields.io/github/license/felipesere/fern)
+![Crates.io](https://img.shields.io/crates/v/fern-run)
 
 
 `fern` is not a build tool
