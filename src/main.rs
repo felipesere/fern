@@ -218,20 +218,35 @@ fn print_help() -> Result<()> {
         -v, --version    Prints version information
 
     SUBCOMMANDS:
-        leaves      for showing all fern.yaml files. Has a -p | --porcelain option for better tooling
         fmt         for anything formatting related
         build       for anything related to building the app
         test        for running any kind of tests
         check       for things like type-checks or build-checks
+        leaves      for showing all fern.yaml files. Has a -p | --porcelain option for better tooling
+        seed        for seeding new fern.yaml files based on a config
 
     [OPTIONS]
         here        to only look in the current dir for a fern.yaml file, not recurisively searching the entire tree 
         -q | --quiet  to silence errors when no fern.yaml file is present
 
-
     Examples
         $: fern fmt  # will look for all fern.yaml files and run the 'fmt' target
         $: fern fmt here  # will look only use the one in the current directory
+
+    Configuration
+        fern will look in $HOME/.fern.config.yaml or in $FERN_CONFIG for a configuration
+        file for seeding.
+        A sample config file looks like this:
+
+        seeds:
+          node:
+            test: npm test
+            fmt:  npm run prettier
+          rust:
+            test:  cargo test
+            fmt:   cargo fmt
+            check: cargo check
+            build: cargo build --release
 
     Any other input will print this help menu.
    "#
