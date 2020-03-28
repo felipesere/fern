@@ -63,10 +63,10 @@ enum PrintStyle {
     Porcelain,
 }
 
-pub(crate) struct Run(String);
+pub(crate) struct Operation(String);
 
 enum Options {
-    Exec(Run, ExecOptions),
+    Exec(Operation, ExecOptions),
     Seed { language: Option<String> },
     Leaves(PrintStyle),
     Help,
@@ -119,7 +119,7 @@ impl Leaf {
         commands
     }
 
-    fn run(self, command: &Run) -> Result<()> {
+    fn run(self, command: &Operation) -> Result<()> {
         let steps = self
             .custom
             .get(&command.0)
@@ -185,7 +185,7 @@ fn command() -> Options {
                 return Options::Seed { language };
             }
             "list" => return Options::List(style(args)),
-            other => return Options::Exec(Run(other.to_owned()), opts(args)),
+            other => return Options::Exec(Operation(other.to_owned()), opts(args)),
         }
     }
     Options::Help
@@ -315,7 +315,7 @@ fn print_help() -> Result<()> {
     Ok(())
 }
 
-fn run_leaves(command: Run, opts: ExecOptions) -> Result<()> {
+fn run_leaves(command: Operation, opts: ExecOptions) -> Result<()> {
     if opts.depth == Depth::Recursive {
         let leaves = all_leaves()?;
         if leaves.is_empty() {
