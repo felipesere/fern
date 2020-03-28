@@ -81,7 +81,7 @@ struct ExecOptions {
 }
 
 #[derive(Debug, PartialEq, Deserialize)]
-struct FolderConfig {
+struct Leaf {
     #[serde(flatten, default)]
     custom: HashMap<String, Steps>,
 
@@ -89,7 +89,7 @@ struct FolderConfig {
     path: Option<PathBuf>,
 }
 
-impl FolderConfig {
+impl Leaf {
     fn from_yaml<R: std::io::Read>(source: R) -> Result<Self> {
         serde_yaml::from_reader(source).context(FailedToReadFernFile {})
     }
@@ -101,7 +101,7 @@ impl FolderConfig {
 
         let file = File::open(path.clone()).unwrap();
 
-        let mut config = FolderConfig::from_yaml(file)?;
+        let mut config = Leaf::from_yaml(file)?;
 
         config.path = Some(path);
 
@@ -252,10 +252,10 @@ fn print_list_of_commands(style: PrintStyle) -> Result<()> {
     Ok(())
 }
 
-fn all_leaves() -> Result<Vec<FolderConfig>> {
+fn all_leaves() -> Result<Vec<Leaf>> {
     let mut leaves = Vec::new();
     for leaf in find_fern_files() {
-        leaves.push(FolderConfig::from_file(leaf)?);
+        leaves.push(Leaf::from_file(leaf)?);
     }
 
     Ok(leaves)
@@ -327,7 +327,7 @@ fn run_leaves(command: Run, opts: ExecOptions) -> Result<()> {
             Ok(())
         }
     } else {
-        let leaf = FolderConfig::from_file(PathBuf::from("./fern.yaml"))?;
+        let leaf = Leaf::from_file(PathBuf::from("./fern.yaml"))?;
         leaf.run(&command)
     }
 }
@@ -415,7 +415,7 @@ fn seed_folder(lang: String) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::FolderConfig;
+    use crate::Leaf;
 
     #[test]
     fn it_parses_a_correct_yaml_file() {
@@ -424,7 +424,7 @@ mod tests {
        build: Fancy
        "#;
 
-        let folder = FolderConfig::from_yaml(yaml.as_bytes()).unwrap();
+        let folder = Leaf::from_yaml(yaml.as_bytes()).unwrap();
 
         let possible_commands = folder.commands();
 
@@ -438,7 +438,7 @@ mod tests {
         has no value:
        "#;
 
-        let error = FolderConfig::from_yaml(yaml.as_bytes())
+        let error = Leaf::from_yaml(yaml.as_bytes())
             .unwrap_err()
             .to_string();
 
@@ -449,7 +449,7 @@ mod tests {
     fn it_reports_errors_for_known_keys() {
         let yaml = "fmt: 12";
 
-        let error = FolderConfig::from_yaml(yaml.as_bytes())
+        let error = Leaf::from_yaml(yaml.as_bytes())
             .unwrap_err()
             .to_string();
 
