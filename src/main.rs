@@ -1,8 +1,8 @@
-use std::fs::File;
-use std::path::{Path, PathBuf};
 use std::{
     collections::{HashMap, HashSet},
-    process::{self, Command},
+    fs::File,
+    path::PathBuf,
+    process,
 };
 
 use ignore::WalkBuilder;
@@ -132,7 +132,7 @@ impl Leaf {
 
         let file_path = self.path.unwrap();
         let cwd = file_path.parent().unwrap();
-        run_all_steps(steps, &cwd)
+        steps.run_all(&cwd)
     }
 }
 
@@ -334,27 +334,6 @@ fn run_leaves(op: Operation, opts: ExecOptions) -> Result<()> {
         let leaf = Leaf::from_file(PathBuf::from("./fern.yaml"))?;
         leaf.run(&op)
     }
-}
-
-fn run_all_steps(steps: Steps, cwd: &Path) -> Result<()> {
-    for value in steps.values {
-        let ecode = Command::new("sh")
-            .arg("-c")
-            .arg(value.clone())
-            .current_dir(cwd)
-            .status()
-            .context(DidNotFindCommand {
-                command: value.clone(),
-            })?;
-        if !ecode.success() {
-            return Result::Err(Error::CommandDidNotSucceed {
-                command: value,
-                exit_code: ecode.code().unwrap_or(-1),
-            });
-        }
-    }
-
-    Ok(())
 }
 
 fn print_leaves(style: PrintStyle) -> Result<()> {
