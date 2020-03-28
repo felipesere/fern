@@ -63,28 +63,10 @@ enum PrintStyle {
     Porcelain,
 }
 
-enum Commands {
-    Fmt,
-    Build,
-    Test,
-    Check,
-    Custom(String),
-}
-
-impl Commands {
-    fn pick(&self, folder: FolderConfig) -> Steps {
-        match self {
-            Commands::Fmt => folder.fmt,
-            Commands::Build => folder.build,
-            Commands::Test => folder.test,
-            Commands::Check => folder.check,
-            Commands::Custom(c) => folder.custom.get(c).cloned().unwrap_or_else(Steps::default),
-        }
-    }
-}
+pub(crate) struct Run(String);
 
 enum Options {
-    Exec(Commands, ExecOptions),
+    Exec(Run, ExecOptions),
     Seed { language: Option<String> },
     Leaves(PrintStyle),
     Help,
@@ -100,15 +82,6 @@ struct ExecOptions {
 
 #[derive(Debug, PartialEq, Deserialize)]
 struct FolderConfig {
-    #[serde(default)]
-    fmt: Steps,
-    #[serde(default)]
-    build: Steps,
-    #[serde(default)]
-    test: Steps,
-    #[serde(default)]
-    check: Steps,
-
     #[serde(flatten, default)]
     custom: HashMap<String, Steps>,
 }
@@ -120,19 +93,6 @@ impl FolderConfig {
 
     fn commands(&self) -> HashSet<String> {
         let mut commands = HashSet::new();
-        if self.fmt.any() {
-            commands.insert("fmt".into());
-        }
-        if self.build.any() {
-            commands.insert("build".into());
-        }
-        if self.test.any() {
-            commands.insert("test".into());
-        }
-        if self.check.any() {
-            commands.insert("check".into());
-        }
-
         for (cmd, steps) in &self.custom {
             if steps.any() {
                 commands.insert(cmd.to_string());
@@ -140,6 +100,13 @@ impl FolderConfig {
         }
 
         commands
+    }
+
+    fn pick(&self, command: &Run) -> Steps {
+        self.custom
+            .get(&command.0)
+            .cloned()
+            .unwrap_or_else(Steps::default)
     }
 }
 
@@ -190,17 +157,13 @@ fn command() -> Options {
     if let Ok(Some(cmd)) = args.subcommand() {
         match cmd.as_str() {
             "help" => return Options::Help,
-            "fmt" => return Options::Exec(Commands::Fmt, opts(args)),
-            "build" => return Options::Exec(Commands::Build, opts(args)),
-            "check" => return Options::Exec(Commands::Check, opts(args)),
-            "test" => return Options::Exec(Commands::Test, opts(args)),
             "leaves" => return Options::Leaves(style(args)),
             "seed" => {
                 let language = args.subcommand().ok().flatten();
                 return Options::Seed { language };
             }
             "list" => return Options::List(style(args)),
-            other => return Options::Exec(Commands::Custom(other.to_owned()), opts(args)),
+            other => return Options::Exec(Run(other.to_owned()), opts(args)),
         }
     }
     Options::Help
@@ -334,7 +297,7 @@ fn print_help() -> Result<()> {
     Ok(())
 }
 
-fn run_leaves(command: Commands, opts: ExecOptions) -> Result<()> {
+fn run_leaves(command: Run, opts: ExecOptions) -> Result<()> {
     if opts.depth == Depth::Recursive {
         let leaves = find_all_leaves();
         if leaves.is_empty() {
@@ -350,7 +313,7 @@ fn run_leaves(command: Commands, opts: ExecOptions) -> Result<()> {
     }
 }
 
-fn run_single_leaf(leaf: PathBuf, command: &Commands) -> Result<()> {
+fn run_single_leaf(leaf: PathBuf, command: &Run) -> Result<()> {
     if !leaf.exists() {
         return Result::Err(Error::NoLeafFoundHere);
     }
@@ -360,7 +323,7 @@ fn run_single_leaf(leaf: PathBuf, command: &Commands) -> Result<()> {
     let working_dir = leaf.parent().unwrap();
     let config = FolderConfig::from_yaml(file)?;
 
-    let steps = command.pick(config);
+    let steps = config.pick(command);
 
     run_all_steps(steps, working_dir)
 }
@@ -448,7 +411,7 @@ fn seed_folder(lang: String) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::FolderConfig;
+    use crate::{FolderConfig, Run};
 
     #[test]
     fn it_parses_a_correct_yaml_file() {
@@ -459,22 +422,14 @@ mod tests {
 
         let folder = FolderConfig::from_yaml(yaml.as_bytes()).unwrap();
 
-        assert_eq!(folder.fmt.values, vec![String::from("Something")]);
-        assert_eq!(folder.build.values, vec![String::from("Fancy")]);
-    }
-
-    #[test]
-    #[ignore]
-    fn it_ignores_unknown_fields() {
-        let yaml = r#"
-       fmt: Something
-       not: Important
-       something: 12
-       "#;
-
-        let folder = FolderConfig::from_yaml(yaml.as_bytes()).unwrap();
-
-        assert_eq!(folder.fmt.values, vec![String::from("Something")]);
+        assert_eq!(
+            folder.pick(&Run("fmt".into())).values,
+            vec![String::from("Something")]
+        );
+        assert_eq!(
+            folder.pick(&Run("build".into())).values,
+            vec![String::from("Fancy")]
+        );
     }
 
     #[test]
@@ -498,6 +453,6 @@ mod tests {
             .unwrap_err()
             .to_string();
 
-        assert_eq!("There was an error when reading the file: fmt: invalid type: integer `12`, expected either single string or sequence of strings at line 1 column 6", error)
+        assert_eq!("There was an error when reading the file: invalid type: integer `12`, expected either single string or sequence of strings at line 1 column 4", error)
     }
 }
