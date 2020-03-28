@@ -2,7 +2,7 @@ use core::fmt;
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer};
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Steps {
     pub values: Vec<String>,
 }
@@ -10,6 +10,12 @@ pub struct Steps {
 impl Default for Steps {
     fn default() -> Self {
         Steps { values: Vec::new() }
+    }
+}
+
+impl Steps {
+    pub fn any(&self) -> bool {
+        !self.values.is_empty()
     }
 }
 

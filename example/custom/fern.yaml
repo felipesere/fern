@@ -1,0 +1,2 @@
+fmt: echo "custom run of fmt"
+run: echo "this is non-standard!"

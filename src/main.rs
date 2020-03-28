@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     process::{self, Command},
 };
 
@@ -68,6 +68,7 @@ enum Commands {
     Build,
     Test,
     Check,
+    Custom(String),
 }
 
 impl Commands {
@@ -77,6 +78,11 @@ impl Commands {
             Commands::Build => folder.build,
             Commands::Test => folder.test,
             Commands::Check => folder.check,
+            Commands::Custom(c) => folder
+                .custom
+                .get(c)
+                .cloned()
+                .unwrap_or_else(|| Steps::default()),
         }
     }
 }
@@ -87,6 +93,7 @@ enum Options {
     Leaves(PrintStyle),
     Help,
     Version,
+    List(PrintStyle),
 }
 
 #[derive(Clone, Copy)]
@@ -105,11 +112,38 @@ struct FolderConfig {
     test: Steps,
     #[serde(default)]
     check: Steps,
+
+    #[serde(flatten, default)]
+    custom: HashMap<String, Steps>,
 }
 
 impl FolderConfig {
     fn from_yaml<R: std::io::Read>(source: R) -> Result<Self> {
         serde_yaml::from_reader(source).context(FailedToReadFernFile {})
+    }
+
+    fn commands(&self) -> HashSet<String> {
+        let mut commands = HashSet::new();
+        if self.fmt.any() {
+            commands.insert("fmt".into());
+        }
+        if self.build.any() {
+            commands.insert("build".into());
+        }
+        if self.test.any() {
+            commands.insert("test".into());
+        }
+        if self.check.any() {
+            commands.insert("check".into());
+        }
+
+        for (cmd, steps) in &self.custom {
+            if steps.any() {
+                commands.insert(cmd.to_string());
+            }
+        }
+
+        commands
     }
 }
 
@@ -142,6 +176,14 @@ fn opts(mut args: Arguments) -> ExecOptions {
     ExecOptions { depth, quiet }
 }
 
+fn style(mut args: Arguments) -> PrintStyle {
+    if args.contains(["-p", "--porcelain"]) {
+        PrintStyle::Porcelain
+    } else {
+        PrintStyle::Pretty
+    }
+}
+
 fn command() -> Options {
     let mut args = pico_args::Arguments::from_env();
 
@@ -151,22 +193,18 @@ fn command() -> Options {
 
     if let Ok(Some(cmd)) = args.subcommand() {
         match cmd.as_str() {
+            "help" => return Options::Help,
             "fmt" => return Options::Exec(Commands::Fmt, opts(args)),
             "build" => return Options::Exec(Commands::Build, opts(args)),
             "check" => return Options::Exec(Commands::Check, opts(args)),
             "test" => return Options::Exec(Commands::Test, opts(args)),
-            "leaves" => {
-                if args.contains(["-p", "--porcelain"]) {
-                    return Options::Leaves(PrintStyle::Porcelain);
-                } else {
-                    return Options::Leaves(PrintStyle::Pretty);
-                }
-            }
+            "leaves" => return Options::Leaves(style(args)),
             "seed" => {
                 let language = args.subcommand().ok().flatten();
                 return Options::Seed { language };
             }
-            _ => {}
+            "list" => return Options::List(style(args)),
+            other => return Options::Exec(Commands::Custom(other.to_owned()), opts(args)),
         }
     }
     Options::Help
@@ -192,12 +230,59 @@ fn main() {
                 Err(Error::NoLanguageDefined)
             }
         }
+        Options::List(style) => print_list_of_commands(style),
     };
 
     if let Result::Err(e) = res {
         println!("{}", e);
         process::exit(-1);
     }
+}
+
+fn print_list_of_commands(style: PrintStyle) -> Result<()> {
+    let leaves = all_leaves()?;
+
+    let mut commands = HashSet::new();
+
+    for leaf in leaves {
+        commands = commands
+            .union(&leaf.commands())
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
+    }
+
+    let mut commands: Vec<String> = commands.into_iter().collect();
+    commands.sort();
+
+    match style {
+        PrintStyle::Pretty => {
+            println!("Available commands are");
+            for command in commands {
+                println!(" * {}", command)
+            }
+        }
+        PrintStyle::Porcelain => {
+            for command in commands {
+                println!("{}", command)
+            }
+        }
+    };
+
+    Ok(())
+}
+
+fn all_leaves() -> Result<Vec<FolderConfig>> {
+    let mut leaves = Vec::new();
+    for leaf in find_all_leaves() {
+        let file = File::open(leaf.clone()).unwrap();
+
+        let config = FolderConfig::from_yaml(file)?;
+
+        leaves.push(config);
+    }
+
+    Ok(leaves)
 }
 
 fn print_version() -> Result<()> {
@@ -384,6 +469,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn it_ignores_unknown_fields() {
         let yaml = r#"
        fmt: Something

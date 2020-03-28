@@ -1,0 +1,5 @@
+run:
+  - echo "Another"
+  - echo "Thing"
+apple: echo "Apple"
+banana: echo "Banana"
