@@ -95,6 +95,10 @@ impl FolderConfig {
     }
 
     fn from_file(path: PathBuf) -> Result<Self> {
+        if !path.exists() {
+            return Result::Err(Error::NoLeafFoundHere);
+        }
+
         let file = File::open(path.clone()).unwrap();
 
         let mut config = FolderConfig::from_yaml(file)?;
@@ -115,11 +119,16 @@ impl FolderConfig {
         commands
     }
 
-    fn pick(&self, command: &Run) -> Steps {
-        self.custom
+    fn run(self, command: &Run) -> Result<()> {
+        let steps = self
+            .custom
             .get(&command.0)
             .cloned()
-            .unwrap_or_else(Steps::default)
+            .unwrap_or_else(Steps::default);
+
+        let file_path = self.path.unwrap();
+        let cwd = file_path.parent().unwrap();
+        run_all_steps(steps, &cwd)
     }
 }
 
@@ -308,33 +317,19 @@ fn print_help() -> Result<()> {
 
 fn run_leaves(command: Run, opts: ExecOptions) -> Result<()> {
     if opts.depth == Depth::Recursive {
-        let leaves = find_fern_files();
+        let leaves = all_leaves()?;
         if leaves.is_empty() {
             Result::Err(Error::NoLeafFoundAnywhere)
         } else {
             for leaf in leaves {
-                run_single_leaf(leaf, &command)?;
+                leaf.run(&command)?;
             }
             Ok(())
         }
     } else {
-        run_single_leaf(PathBuf::from("./fern.yaml"), &command)
+        let leaf = FolderConfig::from_file(PathBuf::from("./fern.yaml"))?;
+        leaf.run(&command)
     }
-}
-
-fn run_single_leaf(leaf: PathBuf, command: &Run) -> Result<()> {
-    if !leaf.exists() {
-        return Result::Err(Error::NoLeafFoundHere);
-    }
-
-    let file = File::open(leaf.clone()).unwrap();
-
-    let working_dir = leaf.parent().unwrap();
-    let config = FolderConfig::from_yaml(file)?;
-
-    let steps = config.pick(command);
-
-    run_all_steps(steps, working_dir)
 }
 
 fn run_all_steps(steps: Steps, cwd: &Path) -> Result<()> {
@@ -420,7 +415,7 @@ fn seed_folder(lang: String) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{FolderConfig, Run};
+    use crate::FolderConfig;
 
     #[test]
     fn it_parses_a_correct_yaml_file() {
@@ -431,14 +426,10 @@ mod tests {
 
         let folder = FolderConfig::from_yaml(yaml.as_bytes()).unwrap();
 
-        assert_eq!(
-            folder.pick(&Run("fmt".into())).values,
-            vec![String::from("Something")]
-        );
-        assert_eq!(
-            folder.pick(&Run("build".into())).values,
-            vec![String::from("Fancy")]
-        );
+        let possible_commands = folder.commands();
+
+        assert!(possible_commands.contains("fmt"));
+        assert!(possible_commands.contains("build"));
     }
 
     #[test]
