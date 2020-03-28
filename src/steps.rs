@@ -1,12 +1,9 @@
 use core::fmt;
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer};
-use snafu::ResultExt;
 use std::{path::Path, process::Command};
 
-use crate::DidNotFindCommand;
-use crate::Error;
-use crate::Result;
+use anyhow::{bail, Context, Result};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Steps {
@@ -31,14 +28,13 @@ impl Steps {
                 .arg(value.clone())
                 .current_dir(cwd)
                 .status()
-                .context(DidNotFindCommand {
-                    command: value.clone(),
-                })?;
+                .with_context(|| format!("Did not find {}", value))?;
             if !ecode.success() {
-                return Result::Err(Error::CommandDidNotSucceed {
-                    command: value,
-                    exit_code: ecode.code().unwrap_or(-1),
-                });
+                bail!(
+                    "Failed to execute command '{}': exit code {}",
+                    value,
+                    ecode.code().unwrap_or(-1)
+                )
             }
         }
 

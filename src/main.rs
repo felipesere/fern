@@ -2,55 +2,17 @@ use std::{
     collections::{HashMap, HashSet},
     fs::File,
     path::PathBuf,
-    process,
 };
 
 use ignore::WalkBuilder;
 use serde::Deserialize;
-use snafu::{ResultExt, Snafu};
 
 use pico_args::Arguments;
 use steps::Steps;
 
 mod steps;
 
-#[derive(Debug, Snafu)]
-enum Error {
-    #[snafu(display("Did not find a fern.yaml file in here"))]
-    NoLeafFoundHere,
-
-    #[snafu(display("Did not find any fern.yaml files"))]
-    NoLeafFoundAnywhere,
-
-    #[snafu(display("Could not read file at {}: {}", file.to_string_lossy(), source))]
-    CouldNotReadFile {
-        file: PathBuf,
-        source: serde_yaml::Error,
-    },
-
-    #[snafu(display("There was an error when reading the file: {}", source))]
-    FailedToReadFernFile { source: serde_yaml::Error },
-
-    #[snafu(display("Did not find {}: {}", command, source))]
-    DidNotFindCommand {
-        command: String,
-        source: std::io::Error,
-    },
-
-    #[snafu(display("Failed to execute command '{}': exit code {}", command, exit_code))]
-    CommandDidNotSucceed { command: String, exit_code: i32 },
-
-    #[snafu(display("No langauge defiend to seed the fern.yaml file with."))]
-    NoLanguageDefined,
-
-    #[snafu(display("Config file at {:?} does not exist", location))]
-    ConfigDoesNotExist { location: PathBuf },
-
-    #[snafu(display("Did not find {} in config", language))]
-    DidNotFindLanguageForSeedfile { language: String },
-}
-
-type Result<T, E = Error> = std::result::Result<T, E>;
+use anyhow::{anyhow, bail, Context, Result};
 
 #[derive(Eq, PartialEq, Copy, Clone)]
 enum Depth {
@@ -91,7 +53,7 @@ struct Leaf {
 
 impl Leaf {
     fn from_yaml<R: std::io::Read>(source: R) -> Result<Self> {
-        serde_yaml::from_reader(source).context(FailedToReadFernFile {})
+        serde_yaml::from_reader(source).context("There was an error when reading the file")
     }
 
     fn path(&self) -> PathBuf {
@@ -100,7 +62,7 @@ impl Leaf {
 
     fn from_file(path: PathBuf) -> Result<Self> {
         if !path.exists() {
-            return Result::Err(Error::NoLeafFoundHere);
+            bail!("Did not find a fern.yaml file in here")
         }
 
         let file = File::open(path.clone()).unwrap();
@@ -195,8 +157,8 @@ fn command() -> Options {
     Options::Help
 }
 
-fn main() {
-    let res = match command() {
+fn main() -> Result<()> {
+    match command() {
         Options::Version => print_version(),
         Options::Help => print_help(),
         Options::Leaves(style) => print_leaves(style),
@@ -212,15 +174,12 @@ fn main() {
             if let Some(lang) = language {
                 seed_folder(lang)
             } else {
-                Err(Error::NoLanguageDefined)
+                Err(anyhow!(
+                    "No langauge defiend to seed the fern.yaml file with."
+                ))
             }
         }
         Options::List(style) => print_list_of_operations(style),
-    };
-
-    if let Result::Err(e) = res {
-        println!("{}", e);
-        process::exit(-1);
     }
 }
 
@@ -323,7 +282,7 @@ fn run_leaves(op: Operation, opts: ExecOptions) -> Result<()> {
     if opts.depth == Depth::Recursive {
         let leaves = all_leaves()?;
         if leaves.is_empty() {
-            Result::Err(Error::NoLeafFoundAnywhere)
+            bail!("Did not find any fern.yaml files")
         } else {
             for leaf in leaves {
                 leaf.run(&op)?;
@@ -378,7 +337,7 @@ fn seed_folder(lang: String) -> Result<()> {
     let config = config_file();
 
     if !config.exists() {
-        return Err(Error::ConfigDoesNotExist { location: config });
+        bail!("Config file at {:?} does not exist", config)
     }
 
     let config = load(config);
@@ -389,7 +348,7 @@ fn seed_folder(lang: String) -> Result<()> {
         println!("Created new fern.yaml file for rust");
         Ok(())
     } else {
-        Err(Error::DidNotFindLanguageForSeedfile { language: lang })
+        bail!("Did not find {} in config", lang)
     }
 }
 
@@ -420,7 +379,7 @@ mod tests {
 
         let error = Leaf::from_yaml(yaml.as_bytes()).unwrap_err().to_string();
 
-        assert_eq!("There was an error when reading the file: mapping values are not allowed in this context at line 2 column 21", error)
+        assert_eq!("There was an error when reading the file", error)
     }
 
     #[test]
@@ -429,6 +388,6 @@ mod tests {
 
         let error = Leaf::from_yaml(yaml.as_bytes()).unwrap_err().to_string();
 
-        assert_eq!("There was an error when reading the file: invalid type: integer `12`, expected either single string or sequence of strings at line 1 column 4", error)
+        assert_eq!("There was an error when reading the file", error)
     }
 }

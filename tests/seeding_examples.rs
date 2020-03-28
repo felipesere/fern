@@ -47,5 +47,5 @@ fn it_doesnt_seed_an_unknown_language() {
         .env(fern_config("example/fern.config.yaml"))
         .run("fern seed node");
 
-    assert.failure().stdout(c("Did not find node in config"));
+    assert.failure().stderr(c("Did not find node in config"));
 }

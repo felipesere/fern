@@ -71,7 +71,7 @@ fn it_warns_if_there_are_no_fern_files_anywhere() {
 
     assert
         .failure()
-        .stdout(c("Did not find any fern.yaml file"));
+        .stderr(c("Did not find any fern.yaml file"));
 }
 
 #[test]
@@ -80,7 +80,7 @@ fn it_warns_if_there_is_no_fern_file_here() {
 
     assert
         .failure()
-        .stdout(c("Did not find a fern.yaml file in here"));
+        .stderr(c("Did not find a fern.yaml file in here"));
 }
 
 #[test]
@@ -96,7 +96,7 @@ fn it_reports_when_commands_fail() {
 
     assert
         .failure()
-        .stdout(c(
+        .stderr(c(
             "Failed to execute command 'does not exist': exit code 127",
         ))
         .stderr(c("sh:").and(c("does:")).and(c("not found")));
