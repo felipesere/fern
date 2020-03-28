@@ -108,21 +108,21 @@ impl Leaf {
         Ok(config)
     }
 
-    fn commands(&self) -> HashSet<String> {
-        let mut commands = HashSet::new();
-        for (cmd, steps) in &self.custom {
+    fn operations(&self) -> HashSet<String> {
+        let mut operations = HashSet::new();
+        for (op, steps) in &self.custom {
             if steps.any() {
-                commands.insert(cmd.to_string());
+                operations.insert(op.to_string());
             }
         }
 
-        commands
+        operations
     }
 
-    fn run(self, command: &Operation) -> Result<()> {
+    fn run(self, op: &Operation) -> Result<()> {
         let steps = self
             .custom
-            .get(&command.0)
+            .get(&op.0)
             .cloned()
             .unwrap_or_else(Steps::default);
 
@@ -211,7 +211,7 @@ fn main() {
                 Err(Error::NoLanguageDefined)
             }
         }
-        Options::List(style) => print_list_of_commands(style),
+        Options::List(style) => print_list_of_operations(style),
     };
 
     if let Result::Err(e) = res {
@@ -220,31 +220,31 @@ fn main() {
     }
 }
 
-fn print_list_of_commands(style: PrintStyle) -> Result<()> {
+fn print_list_of_operations(style: PrintStyle) -> Result<()> {
     let leaves = all_leaves()?;
 
-    let mut commands = HashSet::new();
+    let mut operations = HashSet::new();
 
     for leaf in leaves {
-        commands = commands
-            .union(&leaf.commands())
+        operations = operations
+            .union(&leaf.operations())
             .map(|s| s.to_string())
             .collect();
     }
 
-    let mut commands: Vec<String> = commands.into_iter().collect();
-    commands.sort();
+    let mut operations: Vec<String> = operations.into_iter().collect();
+    operations.sort();
 
     match style {
         PrintStyle::Pretty => {
             println!("Available commands are");
-            for command in commands {
-                println!(" * {}", command)
+            for op in operations {
+                println!(" * {}", op)
             }
         }
         PrintStyle::Porcelain => {
-            for command in commands {
-                println!("{}", command)
+            for op in operations {
+                println!("{}", op)
             }
         }
     };
@@ -315,20 +315,20 @@ fn print_help() -> Result<()> {
     Ok(())
 }
 
-fn run_leaves(command: Operation, opts: ExecOptions) -> Result<()> {
+fn run_leaves(op: Operation, opts: ExecOptions) -> Result<()> {
     if opts.depth == Depth::Recursive {
         let leaves = all_leaves()?;
         if leaves.is_empty() {
             Result::Err(Error::NoLeafFoundAnywhere)
         } else {
             for leaf in leaves {
-                leaf.run(&command)?;
+                leaf.run(&op)?;
             }
             Ok(())
         }
     } else {
         let leaf = Leaf::from_file(PathBuf::from("./fern.yaml"))?;
-        leaf.run(&command)
+        leaf.run(&op)
     }
 }
 
@@ -426,10 +426,10 @@ mod tests {
 
         let folder = Leaf::from_yaml(yaml.as_bytes()).unwrap();
 
-        let possible_commands = folder.commands();
+        let possible_operations = folder.operations();
 
-        assert!(possible_commands.contains("fmt"));
-        assert!(possible_commands.contains("build"));
+        assert!(possible_operations.contains("fmt"));
+        assert!(possible_operations.contains("build"));
     }
 
     #[test]
@@ -438,9 +438,7 @@ mod tests {
         has no value:
        "#;
 
-        let error = Leaf::from_yaml(yaml.as_bytes())
-            .unwrap_err()
-            .to_string();
+        let error = Leaf::from_yaml(yaml.as_bytes()).unwrap_err().to_string();
 
         assert_eq!("There was an error when reading the file: mapping values are not allowed in this context at line 2 column 21", error)
     }
@@ -449,9 +447,7 @@ mod tests {
     fn it_reports_errors_for_known_keys() {
         let yaml = "fmt: 12";
 
-        let error = Leaf::from_yaml(yaml.as_bytes())
-            .unwrap_err()
-            .to_string();
+        let error = Leaf::from_yaml(yaml.as_bytes()).unwrap_err().to_string();
 
         assert_eq!("There was an error when reading the file: invalid type: integer `12`, expected either single string or sequence of strings at line 1 column 4", error)
     }
