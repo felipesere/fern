@@ -78,11 +78,7 @@ impl Commands {
             Commands::Build => folder.build,
             Commands::Test => folder.test,
             Commands::Check => folder.check,
-            Commands::Custom(c) => folder
-                .custom
-                .get(c)
-                .cloned()
-                .unwrap_or_else(|| Steps::default()),
+            Commands::Custom(c) => folder.custom.get(c).cloned().unwrap_or_else(Steps::default),
         }
     }
 }
@@ -247,7 +243,6 @@ fn print_list_of_commands(style: PrintStyle) -> Result<()> {
     for leaf in leaves {
         commands = commands
             .union(&leaf.commands())
-            .into_iter()
             .map(|s| s.to_string())
             .collect();
     }
