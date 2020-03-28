@@ -84,11 +84,24 @@ struct ExecOptions {
 struct FolderConfig {
     #[serde(flatten, default)]
     custom: HashMap<String, Steps>,
+
+    #[serde(skip)]
+    path: Option<PathBuf>,
 }
 
 impl FolderConfig {
     fn from_yaml<R: std::io::Read>(source: R) -> Result<Self> {
         serde_yaml::from_reader(source).context(FailedToReadFernFile {})
+    }
+
+    fn from_file(path: PathBuf) -> Result<Self> {
+        let file = File::open(path.clone()).unwrap();
+
+        let mut config = FolderConfig::from_yaml(file)?;
+
+        config.path = Some(path);
+
+        Ok(config)
     }
 
     fn commands(&self) -> HashSet<String> {
@@ -110,7 +123,7 @@ impl FolderConfig {
     }
 }
 
-fn find_all_leaves() -> Vec<PathBuf> {
+fn find_fern_files() -> Vec<PathBuf> {
     let mut fern_leaves = Vec::new();
     for result in WalkBuilder::new("./").build() {
         let entry = result.unwrap();
@@ -232,12 +245,8 @@ fn print_list_of_commands(style: PrintStyle) -> Result<()> {
 
 fn all_leaves() -> Result<Vec<FolderConfig>> {
     let mut leaves = Vec::new();
-    for leaf in find_all_leaves() {
-        let file = File::open(leaf.clone()).unwrap();
-
-        let config = FolderConfig::from_yaml(file)?;
-
-        leaves.push(config);
+    for leaf in find_fern_files() {
+        leaves.push(FolderConfig::from_file(leaf)?);
     }
 
     Ok(leaves)
@@ -299,7 +308,7 @@ fn print_help() -> Result<()> {
 
 fn run_leaves(command: Run, opts: ExecOptions) -> Result<()> {
     if opts.depth == Depth::Recursive {
-        let leaves = find_all_leaves();
+        let leaves = find_fern_files();
         if leaves.is_empty() {
             Result::Err(Error::NoLeafFoundAnywhere)
         } else {
@@ -350,7 +359,7 @@ fn run_all_steps(steps: Steps, cwd: &Path) -> Result<()> {
 }
 
 fn print_leaves(style: PrintStyle) -> Result<()> {
-    let fern_leaves = find_all_leaves();
+    let fern_leaves = find_fern_files();
     match style {
         PrintStyle::Porcelain => println!(
             "{}",
