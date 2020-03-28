@@ -94,6 +94,10 @@ impl Leaf {
         serde_yaml::from_reader(source).context(FailedToReadFernFile {})
     }
 
+    fn path(&self) -> PathBuf {
+        self.path.clone().unwrap()
+    }
+
     fn from_file(path: PathBuf) -> Result<Self> {
         if !path.exists() {
             return Result::Err(Error::NoLeafFoundHere);
@@ -354,20 +358,17 @@ fn run_all_steps(steps: Steps, cwd: &Path) -> Result<()> {
 }
 
 fn print_leaves(style: PrintStyle) -> Result<()> {
-    let fern_leaves = find_fern_files();
+    let leaves = all_leaves()?;
     match style {
-        PrintStyle::Porcelain => println!(
-            "{}",
-            fern_leaves
-                .iter()
-                .map(|s| s.to_string_lossy())
-                .collect::<Vec<_>>()
-                .join(" ")
-        ),
+        PrintStyle::Porcelain => {
+            for leaf in leaves {
+                println!("{}", leaf.path().to_string_lossy())
+            }
+        }
         PrintStyle::Pretty => {
             println!("Considering leaves:");
-            for leaf in fern_leaves {
-                println!(" *\t{}", leaf.to_string_lossy())
+            for leaf in leaves {
+                println!(" *\t{}", leaf.path().to_string_lossy())
             }
         }
     };
