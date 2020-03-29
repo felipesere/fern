@@ -4,15 +4,41 @@ use std::{
     path::PathBuf,
 };
 
-use ignore::WalkBuilder;
 use serde::Deserialize;
 
+use leaf::Leaf;
 use pico_args::Arguments;
-use steps::Steps;
 
+mod leaf;
 mod steps;
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, bail, Result};
+
+fn main() -> Result<()> {
+    match command() {
+        Options::Version => print_version(),
+        Options::Help => print_help(),
+        Options::Leaves(style) => print_leaves(style),
+        Options::Exec(command, opts) => {
+            let res = run_leaves(command, opts);
+            if opts.quiet {
+                Ok(())
+            } else {
+                res
+            }
+        }
+        Options::Seed { language } => {
+            if let Some(lang) = language {
+                seed_folder(lang)
+            } else {
+                Err(anyhow!(
+                    "No langauge defiend to seed the fern.yaml file with."
+                ))
+            }
+        }
+        Options::List(style) => print_list_of_operations(style),
+    }
+}
 
 #[derive(Eq, PartialEq, Copy, Clone)]
 enum Depth {
@@ -40,80 +66,6 @@ enum Options {
 struct ExecOptions {
     depth: Depth,
     quiet: bool,
-}
-
-#[derive(Debug, PartialEq, Deserialize)]
-struct Leaf {
-    #[serde(flatten, default)]
-    custom: HashMap<String, Steps>,
-
-    #[serde(skip)]
-    path: Option<PathBuf>,
-}
-
-impl Leaf {
-    fn from_yaml<R: std::io::Read>(source: R) -> Result<Self> {
-        serde_yaml::from_reader(source).context("There was an error when reading the file")
-    }
-
-    fn path(&self) -> PathBuf {
-        self.path.clone().unwrap()
-    }
-
-    fn from_file(path: PathBuf) -> Result<Self> {
-        if !path.exists() {
-            bail!("Did not find a fern.yaml file in here")
-        }
-
-        let file = File::open(path.clone()).unwrap();
-
-        let mut config = Leaf::from_yaml(file)?;
-
-        config.path = Some(path);
-
-        Ok(config)
-    }
-
-    fn operations(&self) -> HashSet<String> {
-        let mut operations = HashSet::new();
-        for (op, steps) in &self.custom {
-            if steps.any() {
-                operations.insert(op.to_string());
-            }
-        }
-
-        operations
-    }
-
-    fn run(self, op: &Operation) -> Result<()> {
-        let steps = self
-            .custom
-            .get(&op.0)
-            .cloned()
-            .unwrap_or_else(Steps::default);
-
-        let file_path = self.path.unwrap();
-        let cwd = file_path.parent().unwrap();
-        steps.run_all(&cwd)
-    }
-}
-
-fn find_fern_files() -> Vec<PathBuf> {
-    let mut fern_leaves = Vec::new();
-    for result in WalkBuilder::new("./").build() {
-        let entry = result.unwrap();
-        if entry.metadata().unwrap().is_dir() {
-            continue;
-        }
-
-        if entry.path().file_name().unwrap() != "fern.yaml" {
-            continue;
-        }
-
-        fern_leaves.push(entry.into_path());
-    }
-
-    fern_leaves
 }
 
 fn opts(mut args: Arguments) -> ExecOptions {
@@ -157,34 +109,8 @@ fn command() -> Options {
     Options::Help
 }
 
-fn main() -> Result<()> {
-    match command() {
-        Options::Version => print_version(),
-        Options::Help => print_help(),
-        Options::Leaves(style) => print_leaves(style),
-        Options::Exec(command, opts) => {
-            let res = run_leaves(command, opts);
-            if opts.quiet {
-                Ok(())
-            } else {
-                res
-            }
-        }
-        Options::Seed { language } => {
-            if let Some(lang) = language {
-                seed_folder(lang)
-            } else {
-                Err(anyhow!(
-                    "No langauge defiend to seed the fern.yaml file with."
-                ))
-            }
-        }
-        Options::List(style) => print_list_of_operations(style),
-    }
-}
-
 fn print_list_of_operations(style: PrintStyle) -> Result<()> {
-    let leaves = all_leaves()?;
+    let leaves = Leaf::all_leaves()?;
 
     let mut operations = HashSet::new();
 
@@ -213,15 +139,6 @@ fn print_list_of_operations(style: PrintStyle) -> Result<()> {
     };
 
     Ok(())
-}
-
-fn all_leaves() -> Result<Vec<Leaf>> {
-    let mut leaves = Vec::new();
-    for leaf in find_fern_files() {
-        leaves.push(Leaf::from_file(leaf)?);
-    }
-
-    Ok(leaves)
 }
 
 fn print_version() -> Result<()> {
@@ -280,7 +197,7 @@ fn print_help() -> Result<()> {
 
 fn run_leaves(op: Operation, opts: ExecOptions) -> Result<()> {
     if opts.depth == Depth::Recursive {
-        let leaves = all_leaves()?;
+        let leaves = Leaf::all_leaves()?;
         if leaves.is_empty() {
             bail!("Did not find any fern.yaml files")
         } else {
@@ -290,13 +207,12 @@ fn run_leaves(op: Operation, opts: ExecOptions) -> Result<()> {
             Ok(())
         }
     } else {
-        let leaf = Leaf::from_file(PathBuf::from("./fern.yaml"))?;
-        leaf.run(&op)
+        Leaf::here()?.run(&op)
     }
 }
 
 fn print_leaves(style: PrintStyle) -> Result<()> {
-    let leaves = all_leaves()?;
+    let leaves = Leaf::all_leaves()?;
     match style {
         PrintStyle::Porcelain => {
             for leaf in leaves {
@@ -349,45 +265,5 @@ fn seed_folder(lang: String) -> Result<()> {
         Ok(())
     } else {
         bail!("Did not find {} in config", lang)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::Leaf;
-
-    #[test]
-    fn it_parses_a_correct_yaml_file() {
-        let yaml = r#"
-       fmt: Something
-       build: Fancy
-       "#;
-
-        let folder = Leaf::from_yaml(yaml.as_bytes()).unwrap();
-
-        let possible_operations = folder.operations();
-
-        assert!(possible_operations.contains("fmt"));
-        assert!(possible_operations.contains("build"));
-    }
-
-    #[test]
-    fn it_reports_adequate_errors() {
-        let yaml = r#"fmt: Something
-        has no value:
-       "#;
-
-        let error = Leaf::from_yaml(yaml.as_bytes()).unwrap_err().to_string();
-
-        assert_eq!("There was an error when reading the file", error)
-    }
-
-    #[test]
-    fn it_reports_errors_for_known_keys() {
-        let yaml = "fmt: 12";
-
-        let error = Leaf::from_yaml(yaml.as_bytes()).unwrap_err().to_string();
-
-        assert_eq!("There was an error when reading the file", error)
     }
 }
