@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
 use leaf::Leaf;
-use pico_args::Arguments;
 
+mod arguments;
 mod leaf;
 mod seed;
 mod steps;
@@ -10,7 +10,7 @@ mod steps;
 use anyhow::{anyhow, bail, Result};
 
 fn main() -> Result<()> {
-    match command() {
+    match arguments::parse() {
         Options::Version => print_version(),
         Options::Help => print_help(),
         Options::Leaves(style) => print_leaves(style),
@@ -61,47 +61,6 @@ enum Options {
 struct ExecOptions {
     depth: Depth,
     quiet: bool,
-}
-
-fn opts(mut args: Arguments) -> ExecOptions {
-    let depth = if let Some("here") = args.subcommand().ok().flatten().as_deref() {
-        Depth::Here
-    } else {
-        Depth::Recursive
-    };
-
-    let quiet = args.contains(["-q", "--quiet"]);
-    ExecOptions { depth, quiet }
-}
-
-fn style(mut args: Arguments) -> PrintStyle {
-    if args.contains(["-p", "--porcelain"]) {
-        PrintStyle::Porcelain
-    } else {
-        PrintStyle::Pretty
-    }
-}
-
-fn command() -> Options {
-    let mut args = pico_args::Arguments::from_env();
-
-    if args.contains(["-v", "--version"]) {
-        return Options::Version;
-    }
-
-    if let Ok(Some(cmd)) = args.subcommand() {
-        match cmd.as_str() {
-            "help" => return Options::Help,
-            "leaves" => return Options::Leaves(style(args)),
-            "seed" => {
-                let language = args.subcommand().ok().flatten();
-                return Options::Seed { language };
-            }
-            "list" => return Options::List(style(args)),
-            other => return Options::Exec(Operation(other.to_owned()), opts(args)),
-        }
-    }
-    Options::Help
 }
 
 fn print_list_of_operations(style: PrintStyle) -> Result<()> {
