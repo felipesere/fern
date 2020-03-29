@@ -15,7 +15,7 @@ fn main() -> Result<()> {
         Version => print_version(),
         Help => print_help(),
         Leaves(style) => print_leaves(style),
-        Seed { language } => seed::folder(language),
+        Seed(language) => seed::folder(language),
         List(style) => print_list_of_operations(style),
         Exec(command, opts) => {
             let res = run_leaves(command, opts);
@@ -43,7 +43,7 @@ pub(crate) struct Operation(String);
 
 enum Options {
     Exec(Operation, ExecOptions),
-    Seed { language: Option<String> },
+    Seed(Option<String>),
     Leaves(PrintStyle),
     Help,
     Version,

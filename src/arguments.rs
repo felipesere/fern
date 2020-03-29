@@ -33,7 +33,7 @@ pub(crate) fn parse() -> Options {
             "leaves" => return Options::Leaves(style(args)),
             "seed" => {
                 let language = args.subcommand().ok().flatten();
-                return Options::Seed { language };
+                return Options::Seed(language);
             }
             "list" => return Options::List(style(args)),
             other => return Options::Exec(Operation(other.to_owned()), opts(args)),
