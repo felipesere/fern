@@ -88,6 +88,36 @@ fn print_list_of_operations(style: PrintStyle) -> Result<()> {
     Ok(())
 }
 
+fn run_leaves(operation: Operation, opts: ExecOptions) -> Result<()> {
+    if opts.depth == Depth::Recursive {
+        for leaf in Leaf::all_leaves()? {
+            leaf.run(&operation)?;
+        }
+        Ok(())
+    } else {
+        Leaf::here()?.run(&operation)
+    }
+}
+
+fn print_leaves(style: PrintStyle) -> Result<()> {
+    let leaves = Leaf::all_leaves()?;
+    match style {
+        PrintStyle::Porcelain => {
+            for leaf in leaves {
+                println!("{}", leaf.path().to_string_lossy())
+            }
+        }
+        PrintStyle::Pretty => {
+            println!("Considering leaves:");
+            for leaf in leaves {
+                println!(" *\t{}", leaf.path().to_string_lossy())
+            }
+        }
+    };
+
+    Ok(())
+}
+
 fn print_version() -> Result<()> {
     println!("fern version {}", env!("CARGO_PKG_VERSION"));
     Ok(())
@@ -139,35 +169,5 @@ fn print_help() -> Result<()> {
     Any other input will print this help menu.
    "#
     );
-    Ok(())
-}
-
-fn run_leaves(operation: Operation, opts: ExecOptions) -> Result<()> {
-    if opts.depth == Depth::Recursive {
-        for leaf in Leaf::all_leaves()? {
-            leaf.run(&operation)?;
-        }
-        Ok(())
-    } else {
-        Leaf::here()?.run(&operation)
-    }
-}
-
-fn print_leaves(style: PrintStyle) -> Result<()> {
-    let leaves = Leaf::all_leaves()?;
-    match style {
-        PrintStyle::Porcelain => {
-            for leaf in leaves {
-                println!("{}", leaf.path().to_string_lossy())
-            }
-        }
-        PrintStyle::Pretty => {
-            println!("Considering leaves:");
-            for leaf in leaves {
-                println!(" *\t{}", leaf.path().to_string_lossy())
-            }
-        }
-    };
-
     Ok(())
 }
