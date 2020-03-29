@@ -1,15 +1,10 @@
-use std::{
-    collections::{HashMap, HashSet},
-    fs::File,
-    path::PathBuf,
-};
-
-use serde::Deserialize;
+use std::collections::HashSet;
 
 use leaf::Leaf;
 use pico_args::Arguments;
 
 mod leaf;
+mod seed;
 mod steps;
 
 use anyhow::{anyhow, bail, Result};
@@ -29,7 +24,7 @@ fn main() -> Result<()> {
         }
         Options::Seed { language } => {
             if let Some(lang) = language {
-                seed_folder(lang)
+                seed::folder(lang)
             } else {
                 Err(anyhow!(
                     "No langauge defiend to seed the fern.yaml file with."
@@ -228,42 +223,4 @@ fn print_leaves(style: PrintStyle) -> Result<()> {
     };
 
     Ok(())
-}
-
-fn config_file() -> PathBuf {
-    std::env::var("FERN_CONFIG")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| {
-            let mut home = dirs::home_dir().unwrap();
-            home.push(".fern.config.yaml");
-            home
-        })
-}
-
-#[derive(Debug, PartialEq, Deserialize)]
-struct Config {
-    seeds: HashMap<String, serde_yaml::Value>,
-}
-
-fn load(p: PathBuf) -> Config {
-    serde_yaml::from_reader(File::open(p).unwrap()).unwrap()
-}
-
-fn seed_folder(lang: String) -> Result<()> {
-    let config = config_file();
-
-    if !config.exists() {
-        bail!("Config file at {:?} does not exist", config)
-    }
-
-    let config = load(config);
-
-    if let Some(yaml) = config.seeds.get(&lang) {
-        let f = File::create("fern.yaml").unwrap();
-        serde_yaml::to_writer(f, yaml).expect("this to work");
-        println!("Created new fern.yaml file for rust");
-        Ok(())
-    } else {
-        bail!("Did not find {} in config", lang)
-    }
 }
