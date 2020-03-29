@@ -23,6 +23,10 @@ impl Leaf {
         for leaf in find_fern_files() {
             leaves.push(Leaf::from_file(leaf)?);
         }
+
+        if leaves.is_empty() {
+            bail!("Did not find any fern.yaml files")
+        }
         Ok(leaves)
     }
 

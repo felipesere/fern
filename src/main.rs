@@ -7,14 +7,17 @@ mod leaf;
 mod seed;
 mod steps;
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::Result;
 
 fn main() -> Result<()> {
+    use Options::*;
     match arguments::parse() {
-        Options::Version => print_version(),
-        Options::Help => print_help(),
-        Options::Leaves(style) => print_leaves(style),
-        Options::Exec(command, opts) => {
+        Version => print_version(),
+        Help => print_help(),
+        Leaves(style) => print_leaves(style),
+        Seed { language } => seed::folder(language),
+        List(style) => print_list_of_operations(style),
+        Exec(command, opts) => {
             let res = run_leaves(command, opts);
             if opts.quiet {
                 Ok(())
@@ -22,16 +25,6 @@ fn main() -> Result<()> {
                 res
             }
         }
-        Options::Seed { language } => {
-            if let Some(lang) = language {
-                seed::folder(lang)
-            } else {
-                Err(anyhow!(
-                    "No langauge defiend to seed the fern.yaml file with."
-                ))
-            }
-        }
-        Options::List(style) => print_list_of_operations(style),
     }
 }
 
@@ -151,15 +144,10 @@ fn print_help() -> Result<()> {
 
 fn run_leaves(op: Operation, opts: ExecOptions) -> Result<()> {
     if opts.depth == Depth::Recursive {
-        let leaves = Leaf::all_leaves()?;
-        if leaves.is_empty() {
-            bail!("Did not find any fern.yaml files")
-        } else {
-            for leaf in leaves {
-                leaf.run(&op)?;
-            }
-            Ok(())
+        for leaf in Leaf::all_leaves()? {
+            leaf.run(&op)?;
         }
+        Ok(())
     } else {
         Leaf::here()?.run(&op)
     }
