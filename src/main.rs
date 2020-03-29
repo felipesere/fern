@@ -142,14 +142,14 @@ fn print_help() -> Result<()> {
     Ok(())
 }
 
-fn run_leaves(op: Operation, opts: ExecOptions) -> Result<()> {
+fn run_leaves(operation: Operation, opts: ExecOptions) -> Result<()> {
     if opts.depth == Depth::Recursive {
         for leaf in Leaf::all_leaves()? {
-            leaf.run(&op)?;
+            leaf.run(&operation)?;
         }
         Ok(())
     } else {
-        Leaf::here()?.run(&op)
+        Leaf::here()?.run(&operation)
     }
 }
 
