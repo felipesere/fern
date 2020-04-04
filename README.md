@@ -5,12 +5,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Crates.io](https://meritbadge.herokuapp.com/fern-run)](https://crates.io/crates/fern-run)
 
+`fern` is something like a command runner. You can drop `fern.yaml` files into differnet parts of your (mono-) repo and `fern` will detect them and run the command that you want from them.
+As such, it gives different parts of your mono-repo a unified interface to run certain tasks.
 
-`fern` is not a build tool
-It's closer to a command runner. Its gives different parts of your mono-repo a unified interface to run certain tasks.
-Have a look at this blog by Jeff Ramnani [Project Build Tool](https://8thlight.com/blog/jeff-ramnani/2017/08/07/project-build-protocol.html) for the core idea.
-
-The one and only trick up its sleeve is that, like a real life fern, it is fractal/recursive.
+Have a look at this blog by Jeff Ramnani [Project Build Tool](https://8thlight.com/blog/jeff-ramnani/2017/08/07/project-build-protocol.html) for the idea.
 
 ## Context - Files where they make sense
 
@@ -32,7 +30,7 @@ Because a `fern` has many leaves :smile:.
 ## The leaves make the fern
 
 I have lovingly touted `fern.yaml` files as `leaves`, which is also the name of the command to list them.
-In such a fern `fern.yaml` file you can currently define any of 4 targets:
+In such a fern `fern.yaml` file you would for example define these 4 targets:
 
 * `fmt` for anything formatting related
 * `build` for anything related to building the app
@@ -58,18 +56,24 @@ check:
 ```
 
 That is it. 
-There is no way to describe interdependencies (yet) or anything fancier than that.
+There is no way to describe interdependencies or any intricate ordering between files.
+
+
+
+If those 4 sample targets don't suite your needs, you can add more as you see fit.
 
 ## Running it
 
-The commands match exactly what you'd write in the fern file:
+The commands match exactly what you'd write in the fern file.
+
+For the example above:
 
 * `fern fmt` for anything formatting related
 * `fern build` for anything related to building the app
 * `fern test` for running any kind of tests
 * `fern check` for things like type-checks or build-checks
 
-With the addition of one command:
+There are a few helper commands that make exploring `fern` a little easier.
 
 `leaves` shows you which `fern` files it would find.
 You can give the argument `-p` or `--porcelain` to get all files in a single line, which is nice for opening them all in vim like so:
@@ -77,6 +81,23 @@ You can give the argument `-p` or `--porcelain` to get all files in a single lin
 ```
 vim -p $(fern leaves -p)
 ```
+
+`list` is super practical to find out what commands you have defined across all `fern.yaml` files.
+It list all commands across all fern files and gives you a unique list. It does not matter if a command is only defined in a far far-away `fern.yaml` file:
+
+```bash
+fern list
+Available commands are
+ * apple
+ * banana
+ * build
+ * check
+ * fmt
+ * run
+ * test
+```
+
+
 
 Here is a demo of `fern` running in a different repo of mine:
 [![asciicast](https://asciinema.org/a/QbKh6hrb8I8bnmvMcSDq3PHkP.png)](https://asciinema.org/a/QbKh6hrb8I8bnmvMcSDq3PHkP)
@@ -104,9 +125,24 @@ Under the key `seeds` you can name different chunks that look like a `fern.yaml`
 Running `fern seed rust` will then copy that chunk into a local `fern.yaml`.
 This is practical if you have multiple projects that need similar configs.
 
+## Anti-feature
+
+These are things that `fern` is not meant to do and will likely never learn, mostly for sake of simplicity:
+
+* Dependency ordering and tracking: `fern` us just meant to run commands. Coming up with some kind of dependency tree or explicit ordering would make it more complex. 
+* Caching build outputs: this is extremely complex and there are tools that do this way better (e.g. `bazel` and friends)
+
+
+
 ## Installing and contributing
 
-At the moment, the best way to use is to clone the source and compile it with the latest Rust.
+At the moment, the fastest way to install it is using `cargo` from the Rust distribution:
+
+```bash
+cargo install fern-run
+```
+
+I had to rename it to `fern-run` on crates.io as the name fern was already taken. The command it installs is still called `fern` though.
 
 Contributions are super welcome:
 * There are no tests, so feel free to write any
