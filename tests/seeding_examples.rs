@@ -49,3 +49,14 @@ fn it_doesnt_seed_an_unknown_language() {
 
     assert.failure().stderr(c("Did not find node in config"));
 }
+
+#[test]
+fn it_tells_the_user_if_the_config_can_not_parsed() {
+    let assert = cd("./example/empty")
+        .env(fern_config("example/not-really.yaml"))
+        .run("fern seed node");
+
+    assert
+        .failure()
+        .stderr(c("Unable to read configuration").and(c("fern/example/not-really.yaml")));
+}

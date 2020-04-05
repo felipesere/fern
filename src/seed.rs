@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use serde::Deserialize;
 use serde_yaml;
 use std::{collections::HashMap, fs::File, path::PathBuf};
@@ -21,7 +21,7 @@ pub fn folder(lang: Option<String>) -> Result<()> {
         bail!("Config file at {:?} does not exist", config)
     }
 
-    let config = load(config);
+    let config = load(config)?;
 
     if let Some(yaml) = config.seeds.get(&language) {
         let f = File::create("fern.yaml").unwrap();
@@ -33,8 +33,9 @@ pub fn folder(lang: Option<String>) -> Result<()> {
     }
 }
 
-fn load(p: PathBuf) -> Config {
-    serde_yaml::from_reader(File::open(p).unwrap()).unwrap()
+fn load(p: PathBuf) -> Result<Config> {
+    let f = File::open(p.clone()).unwrap();
+    serde_yaml::from_reader(f).with_context(|| format!("Unable to read configuration {:?}", p))
 }
 
 fn config_file() -> PathBuf {
