@@ -81,8 +81,6 @@ jobs:
           RUSTFLAGS: "-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Zno-landing-pads"
       - id: coverage
         uses: felipesere/grcov@master
-        with:
-          target: fern
       - uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
