@@ -82,7 +82,7 @@ jobs:
       - id: coverage
         uses: felipesere/grcov@v0.1
         with:
-          target_name: fern
+          target: fern
       - uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
