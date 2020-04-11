@@ -7,7 +7,7 @@ mod leaf;
 mod seed;
 mod steps;
 
-use anyhow::Result;
+use anyhow::{Error, Result};
 
 fn main() -> Result<()> {
     use Options::*;
@@ -17,14 +17,7 @@ fn main() -> Result<()> {
         Leaves(style) => print_leaves(style),
         Seed(language) => seed::folder(language),
         List(style) => print_list_of_operations(style),
-        Exec(command, opts) => {
-            let res = run_leaves(command, opts);
-            if opts.quiet {
-                Ok(())
-            } else {
-                res
-            }
-        }
+        Exec(command, opts) => run_leaves(command, opts).or_else(opts.quietly()),
     }
 }
 
@@ -54,6 +47,18 @@ enum Options {
 struct ExecOptions {
     depth: Depth,
     quiet: bool,
+}
+
+impl ExecOptions {
+    fn quietly(self) -> impl FnOnce(Error) -> Result<()> {
+        return move |e| {
+            if self.quiet {
+                Ok(())
+            } else {
+                Err(e)
+            }
+        };
+    }
 }
 
 fn print_list_of_operations(style: PrintStyle) -> Result<()> {
