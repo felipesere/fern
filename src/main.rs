@@ -141,12 +141,16 @@ fn print_help() -> Result<()> {
         -v, --version    Prints version information
 
     SUBCOMMANDS:
-        fmt         for anything formatting related
-        build       for anything related to building the app
-        test        for running any kind of tests
-        check       for things like type-checks or build-checks
+
+    Any key you have defined in your fern files can be run as a subcommand.
+    Common examples could be 'test', 'build', 'check', 'fmt', or 'lint'.
+
+    Furthermore, these extra commands are available to discover which files and commands exist:
+
+        list        for showing which commands are available across your fern files
         leaves      for showing all fern.yaml files. Has a -p | --porcelain option for better tooling
         seed        for seeding new fern.yaml files based on a config
+
 
     [OPTIONS]
         here        to only look in the current dir for a fern.yaml file, not recurisively searching the entire tree 
