@@ -51,13 +51,13 @@ struct ExecOptions {
 
 impl ExecOptions {
     fn quietly(self) -> impl FnOnce(Error) -> Result<()> {
-        return move |e| {
+        move |e| {
             if self.quiet {
                 Ok(())
             } else {
                 Err(e)
             }
-        };
+        }
     }
 }
 
