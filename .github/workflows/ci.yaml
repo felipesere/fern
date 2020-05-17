@@ -80,7 +80,17 @@ jobs:
           CARGO_INCREMENTAL: "0"
           RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
       - id: coverage
-        uses: actions-rs/grcov@master
+        uses: actions-rs/grcov@0.2-proto
+        with:
+          args: >
+            --filter covered
+            --output-type lcov
+            --output-file ./target/lcov.info
+            --prefix-dir /home/user/build/
+            --branch
+            --ignore-not-existing
+            --llvm
+            ./target/debug
       - uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
