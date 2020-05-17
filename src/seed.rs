@@ -1,6 +1,5 @@
 use anyhow::{bail, Context, Result};
 use serde::Deserialize;
-use serde_yaml;
 use std::{collections::HashMap, fs::File, path::PathBuf};
 
 #[derive(Debug, PartialEq, Deserialize)]
