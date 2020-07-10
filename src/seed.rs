@@ -24,7 +24,7 @@ pub fn folder(lang: Option<String>) -> Result<()> {
 
     if let Some(yaml) = config.seeds.get(&language) {
         let f = File::create("fern.yaml")?;
-        serde_yaml::to_writer(f, yaml).with_context(|| format!("unable to write fern.yaml"))?;
+        serde_yaml::to_writer(f, yaml).with_context(|| "unable to write fern.yaml".to_string())?;
         println!("Created new fern.yaml file for rust");
         Ok(())
     } else {
