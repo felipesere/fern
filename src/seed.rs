@@ -23,8 +23,8 @@ pub fn folder(lang: Option<String>) -> Result<()> {
     let config = load(config)?;
 
     if let Some(yaml) = config.seeds.get(&language) {
-        let f = File::create("fern.yaml").unwrap();
-        serde_yaml::to_writer(f, yaml).expect("this to work");
+        let f = File::create("fern.yaml")?;
+        serde_yaml::to_writer(f, yaml).with_context(|| format!("unable to write fern.yaml"))?;
         println!("Created new fern.yaml file for rust");
         Ok(())
     } else {
@@ -33,7 +33,7 @@ pub fn folder(lang: Option<String>) -> Result<()> {
 }
 
 fn load(p: PathBuf) -> Result<Config> {
-    let f = File::open(p.clone()).unwrap();
+    let f = File::open(p.clone())?;
     serde_yaml::from_reader(f).with_context(|| format!("Unable to read configuration {:?}", p))
 }
 
@@ -41,7 +41,7 @@ fn config_file() -> PathBuf {
     std::env::var("FERN_CONFIG")
         .map(PathBuf::from)
         .unwrap_or_else(|_| {
-            let mut home = dirs::home_dir().unwrap();
+            let mut home = dirs::home_dir().expect("Unable to get the the users 'home' directory");
             home.push(".fern.config.yaml");
             home
         })
