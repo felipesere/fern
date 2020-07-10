@@ -1,5 +1,5 @@
 use crate::{steps::Steps, Operation};
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use ignore::WalkBuilder;
 use serde::Deserialize;
 use std::{
@@ -14,7 +14,7 @@ pub struct Leaf {
     custom: HashMap<String, Steps>,
 
     #[serde(skip)]
-    path: Option<PathBuf>,
+    path: PathBuf,
 }
 
 impl Leaf {
@@ -39,7 +39,7 @@ impl Leaf {
     }
 
     pub(crate) fn path(&self) -> PathBuf {
-        self.path.clone().unwrap()
+        self.path.clone()
     }
 
     fn from_file(path: PathBuf) -> Result<Self> {
@@ -47,11 +47,11 @@ impl Leaf {
             bail!("Did not find a fern.yaml file in here")
         }
 
-        let file = File::open(path.clone()).unwrap();
+        let file = File::open(path.clone())?;
 
         let mut config = Leaf::from_yaml(file)?;
 
-        config.path = Some(path);
+        config.path = path;
 
         Ok(config)
     }
@@ -74,21 +74,20 @@ impl Leaf {
             .cloned()
             .unwrap_or_else(Steps::default);
 
-        let file_path = self.path.unwrap();
-        let cwd = file_path.parent().unwrap();
+        let cwd = self
+            .path
+            .parent()
+            .ok_or_else(|| anyhow!("Unable to get parent directory to run command in"))?;
+
         steps.run_all(cwd)
     }
 }
 
 fn find_fern_files() -> Vec<PathBuf> {
     let mut fern_leaves = Vec::new();
-    for result in WalkBuilder::new("./").build() {
-        let entry = result.unwrap();
-        if entry.metadata().unwrap().is_dir() {
-            continue;
-        }
-
-        if entry.path().file_name().unwrap() != "fern.yaml" {
+    let mut walker = WalkBuilder::new("./").build();
+    while let Some(Ok(entry)) = walker.next() {
+        if entry.file_name() != "fern.yaml" {
             continue;
         }
 
