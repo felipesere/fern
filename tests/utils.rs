@@ -14,14 +14,14 @@ impl Dir {
         let mut fern = Command::cargo_bin("fern").unwrap();
 
         if self.env != "" {
-            if let [key, value] = &self.env.split("=").collect::<Vec<&str>>()[..] {
+            if let [key, value] = &self.env.split('=').collect::<Vec<&str>>()[..] {
                 fern.env(key, value);
             }
         }
 
         fern.current_dir(self.v);
 
-        let args = cli.split(" ").into_iter().skip(1).collect::<Vec<_>>();
+        let args = cli.split(' ').skip(1).collect::<Vec<_>>();
         fern.args(args);
 
         fern.assert()
