@@ -5,15 +5,9 @@ use std::{path::Path, process::Command};
 
 use anyhow::{bail, Context, Result};
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Default, Eq, PartialEq, Clone)]
 pub struct Steps {
     pub values: Vec<String>,
-}
-
-impl Default for Steps {
-    fn default() -> Self {
-        Steps { values: Vec::new() }
-    }
 }
 
 impl Steps {
