@@ -29,15 +29,16 @@ pub(crate) fn parse() -> Options {
 
     if let Ok(Some(cmd)) = args.subcommand() {
         match cmd.as_str() {
-            "help" => return Options::Help,
-            "leaves" => return Options::Leaves(style(args)),
+            "help" => Options::Help,
+            "leaves" => Options::Leaves(style(args)),
             "seed" => {
                 let language = args.subcommand().ok().flatten();
-                return Options::Seed(language);
+                Options::Seed(language)
             }
-            "list" => return Options::List(style(args)),
-            other => return Options::Exec(Operation(other.to_owned()), opts(args)),
+            "list" => Options::List(style(args)),
+            other => Options::Exec(Operation(other.to_owned()), opts(args))
         }
+    } else {
+        Options::Help
     }
-    Options::Help
 }
