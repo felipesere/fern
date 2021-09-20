@@ -3,7 +3,7 @@
 [![build](https://github.com/felipesere/fern/actions/workflows/ci.yaml/badge.svg)](https://github.com/felipesere/fern/actions/workflows/ci.yaml)
 [![Coverage](https://codecov.io/gh/felipesere/fern/branch/master/graph/badge.svg)](https://codecov.io/gh/felipesere/fern)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Crates.io](https://meritbadge.herokuapp.com/fern-run)](https://crates.io/crates/fern-run)
+[![Crates.io](https://img.shields.io/crates/v/fern-run)](https://crates.io/crates/fern-run) 
 
 `fern` is something like a command runner. You can drop `fern.yaml` files into differnet parts of your (mono-) repo and `fern` will detect them and run the command that you want from them.
 As such, it gives different parts of your mono-repo a unified interface to run certain tasks.
