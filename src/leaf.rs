@@ -76,7 +76,7 @@ impl Leaf {
 
         let file_path = self.path.unwrap();
         let cwd = file_path.parent().unwrap();
-        steps.run_all(&cwd)
+        steps.run_all(cwd)
     }
 }
 

@@ -36,7 +36,7 @@ pub(crate) fn parse() -> Options {
                 Options::Seed(language)
             }
             "list" => Options::List(style(args)),
-            other => Options::Exec(Operation(other.to_owned()), opts(args))
+            other => Options::Exec(Operation(other.to_owned()), opts(args)),
         }
     } else {
         Options::Help
