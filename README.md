@@ -1,6 +1,6 @@
 # Fern
 
-![build](https://github.com/felipesere/fern/workflows/build/badge.svg?branch=master)
+[![build](https://github.com/felipesere/fern/actions/workflows/ci.yaml/badge.svg)](https://github.com/felipesere/fern/actions/workflows/ci.yaml)
 [![Coverage](https://codecov.io/gh/felipesere/fern/branch/master/graph/badge.svg)](https://codecov.io/gh/felipesere/fern)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Crates.io](https://meritbadge.herokuapp.com/fern-run)](https://crates.io/crates/fern-run)
