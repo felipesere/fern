@@ -5,7 +5,7 @@ use assert_cmd::{assert::Assert, Command};
 pub use predicates::{prelude::PredicateBooleanExt, str::contains as c};
 use std::path::PathBuf;
 pub(crate) struct Dir {
-    v: &'static str,
+    v: PathBuf,
     env: String,
 }
 
@@ -38,9 +38,10 @@ pub(crate) fn run(cli: &'static str) -> Assert {
     cd("./").run(cli)
 }
 
-pub(crate) fn cd(dir: &'static str) -> Dir {
-    if !PathBuf::from(dir).exists() {
-        panic!("could not 'cd' into non-existing file: {}", dir);
+pub(crate) fn cd<P: Into<PathBuf>>(dir: P) -> Dir {
+    let dir: PathBuf = dir.into();
+    if !dir.exists() {
+        panic!("could not 'cd' into non-existing file: {:?}", dir);
     }
     Dir {
         v: dir,

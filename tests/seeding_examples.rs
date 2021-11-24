@@ -1,20 +1,10 @@
 use assert_fs::assert::PathAssert;
 use assert_fs::fixture::ChildPath;
+use assert_fs::TempDir;
 use utils::*;
 
 #[path = "./utils.rs"]
 mod utils;
-
-fn cleanup<F>(file: &'static str, test: F)
-where
-    F: FnOnce() -> (),
-{
-    let _ = std::fs::remove_file(file);
-
-    test();
-
-    let _ = std::fs::remove_file(file);
-}
 
 fn fern_config(relative: &'static str) -> String {
     let mut config_file = std::env::current_dir().unwrap();
@@ -23,22 +13,24 @@ fn fern_config(relative: &'static str) -> String {
 }
 #[test]
 fn it_can_seed_a_project_based_on_config() {
-    cleanup("./example/empty/fern.yaml", || {
-        let assert = cd("./example/empty")
-            .env(fern_config("example/fern.config.yaml"))
-            .run("fern seed rust");
+    let temp = TempDir::new().unwrap();
+    let dir = temp.path();
 
-        assert
-            .success()
-            .stdout(c("Created new fern.yaml file for rust"));
+    let assert = cd(&dir)
+        .env(fern_config("example/fern.config.yaml"))
+        .run("fern seed rust");
 
-        ChildPath::new("./example/empty/fern.yaml").assert(
-            r#"---
+    assert
+        .success()
+        .stdout(c("Created new fern.yaml file for rust"));
+
+    ChildPath::new(dir.join("fern.yaml")).assert(
+        r#"---
 fmt: "echo \"cargo fmt\""
 test: "echo \"cargo test\""
-build: "echo \"cargo build --release\"""#,
-        );
-    });
+build: "echo \"cargo build --release\""
+"#,
+    );
 }
 
 #[test]
