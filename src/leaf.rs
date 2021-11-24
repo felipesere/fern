@@ -68,11 +68,7 @@ impl Leaf {
     }
 
     pub(crate) fn run(self, op: &Operation) -> Result<()> {
-        let steps = self
-            .custom
-            .get(&op.0)
-            .cloned()
-            .unwrap_or_else(Steps::default);
+        let steps = self.custom.get(&op.0).cloned().unwrap_or_default();
 
         let cwd = self
             .path
