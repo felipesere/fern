@@ -5,9 +5,9 @@ mod utils;
 
 #[test]
 fn it_prints_the_version() {
-    let assert = run("fern -v");
+    let assert = run("fern -V");
 
-    assert.success().stdout(c("fern version"));
+    assert.success().stdout(c("fern 0.0.3"));
 }
 
 #[test]
@@ -15,7 +15,7 @@ fn it_prints_some_help() {
     let assert = run("fern help");
 
     assert.success().stdout(c(
-        "Gives different parts of your mono-repo a unified interface to run certain tasks.",
+        "Gives different parts of your mono-repo a unified interface to run certain tasks",
     ));
 }
 #[test]
@@ -30,14 +30,14 @@ fn it_runs_fmt_for_the_entire_directory() {
 }
 #[test]
 fn it_runs_build_for_the_current_folder() {
-    let assert = cd("./example").run("fern build here");
+    let assert = cd("./example").run("fern build --here");
 
     assert.success().stdout(c("Fooooo"));
 }
 
 #[test]
 fn runs_multiple_tests_from_the_fern_file() {
-    let assert = cd("./example").run("fern fmt here");
+    let assert = cd("./example").run("fern fmt --here");
 
     assert.success().stdout(c("The first").and(c("The second")));
 }
@@ -76,7 +76,7 @@ fn it_warns_if_there_are_no_fern_files_anywhere() {
 
 #[test]
 fn it_warns_if_there_is_no_fern_file_here() {
-    let assert = cd("./example/empty").run("fern fmt here");
+    let assert = cd("./example/empty").run("fern fmt --here");
 
     assert
         .failure()
@@ -85,14 +85,14 @@ fn it_warns_if_there_is_no_fern_file_here() {
 
 #[test]
 fn it_allows_the_user_to_suppress_the_missing_file_warning() {
-    let assert = cd("./example/empty").run("fern fmt here -q");
+    let assert = cd("./example/empty").run("fern fmt --here -q");
 
     assert.success().stdout(predicates::str::is_empty());
 }
 
 #[test]
 fn it_reports_when_commands_fail() {
-    let assert = cd("./example").run("fern check here");
+    let assert = cd("./example").run("fern check --here");
 
     assert
         .failure()

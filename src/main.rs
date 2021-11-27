@@ -1,51 +1,120 @@
 use std::collections::HashSet;
+use std::str::FromStr;
 
 use leaf::Leaf;
 
-mod arguments;
 mod leaf;
 mod seed;
 mod steps;
 
 use anyhow::{Error, Result};
 
-fn main() -> Result<()> {
-    use Options::*;
-    match arguments::parse() {
-        Version => print_version(),
-        Help => print_help(),
-        Leaves(style) => print_leaves(style),
-        Seed(language) => seed::folder(language),
-        List(style) => print_list_of_operations(style),
-        Exec(command, opts) => run_leaves(command, opts).or_else(opts.quietly()),
+use clap::{ArgEnum, Parser};
+
+/// Gives different parts of your mono-repo a unified interface to run certain tasks
+///
+///
+/// Any other input will print this help menu.
+///
+/// Any key you have defined in your fern files can be run as a subcommand.
+/// Common examples could be 'test', 'build', 'check', 'fmt', or 'lint'.
+#[derive(Parser)]
+#[clap(
+    name = "fern",
+    version = "0.0.3",
+    author = "Felipe Sere <fern@felipesere.com>",
+    setting = clap::AppSettings::DeriveDisplayOrder,
+    after_help = include_str!("../after_help.txt"),
+)]
+struct Opts {
+    #[clap(subcommand)]
+    cmd: Cmd,
+}
+
+#[derive(Parser)]
+enum Cmd {
+    /// for showing all fern.yaml files.
+    Leaves {
+        #[clap(flatten)]
+        style: Style,
+    },
+
+    /// for seeding new fern.yaml files based on a config
+    Seed { language: Option<String> },
+
+    /// for showing which commands are available across your fern files
+    List {
+        #[clap(flatten)]
+        style: Style,
+    },
+
+    /// Run any command from your fern file
+    #[clap(external_subcommand)]
+    Exec(Vec<String>),
+}
+
+impl FromStr for Operation {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Operation(s.to_string()))
     }
 }
 
-#[derive(Eq, PartialEq, Copy, Clone)]
-enum Depth {
-    Here,
-    Recursive,
+/// Yay?
+#[derive(Parser)]
+struct Style {
+    /// Don't print any special list characters. Useful for scripts.
+    #[clap(long, short)]
+    porcelain: bool,
 }
 
+#[derive(ArgEnum, Clone)]
 enum PrintStyle {
     Pretty,
     Porcelain,
 }
 
-pub(crate) struct Operation(String);
+fn main() -> Result<()> {
+    let opts = Opts::parse();
 
-enum Options {
-    Exec(Operation, ExecOptions),
-    Seed(Option<String>),
-    Leaves(PrintStyle),
-    Help,
-    Version,
-    List(PrintStyle),
+    match opts.cmd {
+        Cmd::Leaves { style } => {
+            let style = if style.porcelain {
+                PrintStyle::Porcelain
+            } else {
+                PrintStyle::Pretty
+            };
+            print_leaves(style)
+        }
+        Cmd::Seed { language } => seed::folder(language),
+        Cmd::List { style } => {
+            let style = if style.porcelain {
+                PrintStyle::Porcelain
+            } else {
+                PrintStyle::Pretty
+            };
+            print_list_of_operations(style)
+        }
+        Cmd::Exec(args) => {
+            let operation = args[0].to_string();
+            let options = ExecOptions::parse_from(&args[1..]);
+            run_leaves(Operation(operation), options).or_else(options.quietly())
+        }
+    }
 }
 
-#[derive(Clone, Copy)]
+pub(crate) struct Operation(String);
+
+#[derive(Parser, Clone, Copy, Debug)]
+#[clap(setting = clap::AppSettings::NoBinaryName)] // allows me to use `parse_from` to re-parse the arguments
 struct ExecOptions {
-    depth: Depth,
+    /// Only operate on the fern file found directly in this directory
+    #[clap(short, long)]
+    here: bool,
+
+    /// Don't print any errors if there is no fern file here. Practical for scripts.
+    #[clap(short, long)]
     quiet: bool,
 }
 
@@ -94,7 +163,7 @@ fn print_list_of_operations(style: PrintStyle) -> Result<()> {
 }
 
 fn run_leaves(operation: Operation, opts: ExecOptions) -> Result<()> {
-    if opts.depth == Depth::Recursive {
+    if !opts.here {
         for leaf in Leaf::all_leaves()? {
             leaf.run(&operation)?;
         }
@@ -120,63 +189,5 @@ fn print_leaves(style: PrintStyle) -> Result<()> {
         }
     };
 
-    Ok(())
-}
-
-fn print_version() -> Result<()> {
-    println!("fern version {}", env!("CARGO_PKG_VERSION"));
-    Ok(())
-}
-
-fn print_help() -> Result<()> {
-    println!(
-        r#"
-    fern
-    Gives different parts of your mono-repo a unified interface to run certain tasks.
-
-    USAGE:
-        fern [FLAGS] [SUBCOMMAND] [OPTIONS]
-
-    FLAGS:
-        -v, --version    Prints version information
-
-    SUBCOMMANDS:
-
-    Any key you have defined in your fern files can be run as a subcommand.
-    Common examples could be 'test', 'build', 'check', 'fmt', or 'lint'.
-
-    Furthermore, these extra commands are available to discover which files and commands exist:
-
-        list        for showing which commands are available across your fern files
-        leaves      for showing all fern.yaml files. Has a -p | --porcelain option for better tooling
-        seed        for seeding new fern.yaml files based on a config
-
-
-    [OPTIONS]
-        here        to only look in the current dir for a fern.yaml file, not recurisively searching the entire tree 
-        -q | --quiet  to silence errors when no fern.yaml file is present
-
-    Examples
-        $: fern fmt  # will look for all fern.yaml files and run the 'fmt' target
-        $: fern fmt here  # will look only use the one in the current directory
-
-    Configuration
-        fern will look in $HOME/.fern.config.yaml or in $FERN_CONFIG for a configuration
-        file for seeding.
-        A sample config file looks like this:
-
-        seeds:
-          node:
-            test: npm test
-            fmt:  npm run prettier
-          rust:
-            test:  cargo test
-            fmt:   cargo fmt
-            check: cargo check
-            build: cargo build --release
-
-    Any other input will print this help menu.
-   "#
-    );
     Ok(())
 }

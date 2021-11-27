@@ -1,0 +1,18 @@
+EXAMPLES:
+    $: fern fmt         # will look for all fern.yaml files and run the 'fmt' target
+    $: fern fmt --here  # will look only use the one in the current directory
+
+CONFIGURATION:
+    fern will look in $HOME/.fern.config.yaml or in $FERN_CONFIG for a configuration
+    file for seeding.
+    A sample config file looks like this:
+
+    seeds:
+      node:
+        test: npm test
+        fmt:  npm run prettier
+      rust:
+        test:  cargo test
+        fmt:   cargo fmt
+        check: cargo check
+        build: cargo build --release

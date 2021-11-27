@@ -5,7 +5,7 @@ mod utils;
 
 #[test]
 fn it_can_run_custom_commands() {
-    let assert = cd("./example/custom").run("fern run here");
+    let assert = cd("./example/custom").run("fern run --here");
 
     assert.success().stdout(c("this is non-standard!"));
 }
